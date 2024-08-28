@@ -1,0 +1,21 @@
+body{
+    background-color:skyblue;
+}
+#container{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+h1{
+   text-align: center;
+}
+.inputContainer{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 5%;
+}
+#loginButton,#registerButton{
+    margin: 5%;
+}

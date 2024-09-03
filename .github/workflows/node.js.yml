@@ -31,5 +31,11 @@ jobs:
       run: |
         echo ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }} >> .env
         echo ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} >> .env
+    - name: Start server
+      run: |
+        cd server
+        nohup node server.js &
+      env:
+        NODE_ENV: test
     - name: Run Tests
       run: npm test

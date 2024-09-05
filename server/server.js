@@ -105,10 +105,10 @@ app.post('/findUser', async (req,res)=>{
     user.password = Buffer.from(user.password).toString('base64');
     const result = await sql `SELECT * FROM users WHERE username = ${user.username} AND password = ${user.password}`
     if(result.length > 0 ){
-        res.send({'response':'OK'});
+        res.status(200).send({'response':'OK'})
     }
     else{
-        res.send({'response':'NOT OK'});
+        res.status(401).send({'response':'NOT OK'})
     }
 })
 app.post('/getRefreshToken',(req,res)=>{

@@ -101,22 +101,12 @@ async function findUser(user){
 
 getLastUser();
 document.getElementById('loginButton').addEventListener('click',login);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 document.getElementById('logSwitchReg').addEventListener('click',switchToRegister);
+
+
+
+
+
+
 
 

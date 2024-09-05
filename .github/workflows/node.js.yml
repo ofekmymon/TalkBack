@@ -19,9 +19,9 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_SQL_USERNAME }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_SQL_URL }}
+          POSTGRES_SQL_USERNAME: ${{ secrets.POSTGRES_SQL_USERNAME }}
+          POSTGRES_SQL_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
+          POSTGRES_SQL_URL: ${{ secrets.POSTGRES_SQL_URL }}
           
     strategy:
       matrix:

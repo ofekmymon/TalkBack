@@ -11,9 +11,18 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    
+    services:
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_SQL_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_SQL_URL }}
+          
     strategy:
       matrix:
         node-version: [18.x, 20.x, 22.x]
@@ -25,6 +34,9 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
+    - name: Set up environment
+      run: |
+        echo DATABASE_URL=postgres://${{ secrets.POSTGRES_SQL_USERNAME }}:${{ secrets.POSTGRES_SQL_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_SQL_URL }} >> .env
     - name: Install dependencies
       run: npm install
     - name: Set up .env
@@ -37,5 +49,8 @@ jobs:
         nohup node server.js &
       env:
         NODE_ENV: test
+    - name: Wait for services
+      run: sleep 10 # Optional step to ensure services are up
+      
     - name: Run Tests
       run: npm test

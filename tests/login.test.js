@@ -27,4 +27,8 @@ describe('POST /login', () => {
         expect(response.statusCode).toBe(401); // Expect faliure
         expect(response.body).toBe('NOT OK')       
     });
+    afterAll(async () => {
+      await server.close();
+        postgres.connection.close();
+    });
 });

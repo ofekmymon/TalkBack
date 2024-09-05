@@ -6,8 +6,10 @@ describe('POST /login', () => {
         const response = await request(app)
             .post('/findUser')
             .send({
-                username: process.env.ADMIN_USERNAME,
-                password: process.env.ADMIN_PASSWORD
+                user:{
+                    username: process.env.ADMIN_USERNAME,
+                    password: process.env.ADMIN_PASSWORD
+                }
             });
 
         expect(response.statusCode).toBe(200); //Expect success

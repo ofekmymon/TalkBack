@@ -21,7 +21,7 @@ jobs:
         env:
           POSTGRES_USER: ${{ secrets.POSTGRES_SQL_USERNAME }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_SQL_URL }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_SQL_DB }}
           
     strategy:
       matrix:
@@ -36,7 +36,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: Set up environment
       run: |
-        echo DATABASE_URL=postgres://${{ secrets.POSTGRES_SQL_USERNAME }}:${{ secrets.POSTGRES_SQL_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_SQL_URL }} >> .env
+        echo DATABASE_URL=postgres://${{ secrets.POSTGRES_SQL_USERNAME }}:${{ secrets.POSTGRES_SQL_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_SQL_DB }} >> .env
     - name: Install dependencies
       run: npm install
     - name: Set up .env

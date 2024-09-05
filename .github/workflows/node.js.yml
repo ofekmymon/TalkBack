@@ -15,25 +15,21 @@ jobs:
     
     services:
       postgres:
-        image: postgres:13
+        image: postgres
         ports:
           - 5432:5432
         env:
-          POSTGRES_SQL_USERNAME: ${{ secrets.POSTGRES_SQL_USERNAME }}
-          POSTGRES_SQL_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
-          POSTGRES_SQL_URL: ${{ secrets.POSTGRES_SQL_URL }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_SQL_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_SQL_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_SQL_DB }}
           
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js latest
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: latest
     - name: Set up environment
       run: |
         echo DATABASE_URL=postgres://${{ secrets.POSTGRES_SQL_USERNAME }}:${{ secrets.POSTGRES_SQL_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_SQL_URL }} >> .env

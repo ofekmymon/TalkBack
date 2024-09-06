@@ -220,7 +220,7 @@ async function createContactList(username){
             
         }
         const username = await getUsername(token);
-        await createContactList(username,token);
+        await createContactList(username);
         setInterval(()=>{sendHeartbeat(username)}, 30000);
     }   
     catch(err){

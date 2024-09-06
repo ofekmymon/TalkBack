@@ -12,7 +12,6 @@ app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 
 app.use(express.static('api'));
-
 // const io = socketio(server);
 const port = '3000';
 
@@ -39,11 +38,11 @@ app.post('/heartbeat',(req,res) => {
 setInterval(async()=>{
     const now = Date.now();
     newlyOffline = [];
-    newlyOffline.length = 0;
+    // newlyOffline.length = 0;
     for (const username in activeClients) {
         if (now - activeClients[username] > 60000) {
             //get the name of the offline user
-            newlyOffline.push(Object.keys(activeClients).find(key => activeClients[key] === value));
+            newlyOffline.push(username);
             console.log(newlyOffline);
             delete activeClients[username];
             await makeUserOffline(username); 
@@ -234,8 +233,7 @@ app.post('/verifyToken',async (req,res)=>{
 
 //request to get all member names and their activity status
 app.post('/getAllUsers' , async (req,res) => {
-    const username = req.body;
-    console.log('getting all users for:');
+    const username = req.body.username;
     const list = await getAllContacts(username);
     res.send({list})
 })

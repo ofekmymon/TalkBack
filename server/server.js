@@ -2,6 +2,7 @@ require('dotenv').config();
 const jwt =  require('jsonwebtoken');
 const express = require('express');
 const app = express();
+const multer = require('multer');
 const bodyParser = require('body-parser');
 const socketio = require('socket.io')
 const postgres = require('postgres');
@@ -9,16 +10,12 @@ const sql = postgres(process.env.DATABASE_URL);
 
 
 app.use(bodyParser.urlencoded({extended:false}));
+app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '10mb' })); //allows the server to handle binary raw data
 app.use(bodyParser.json());
 
 app.use(express.static('api'));
 // const io = socketio(server);
-const port = '3000';
-
-app.listen(port,async ()=>{
-    console.log(`listening on port ${port} :D`);
-    await allUsersOffline()
-})
+const upload = multer();
 
 
 
@@ -43,13 +40,11 @@ setInterval(async()=>{
         if (now - activeClients[username] > 60000) {
             //get the name of the offline user
             newlyOffline.push(username);
-            console.log(newlyOffline);
             delete activeClients[username];
             await makeUserOffline(username); 
             console.log(`Client ${username} has been inactive and removed from the list.`);
         }
     };
-    console.log(activeClients);
 },30000) //every 30 seconds
 
 
@@ -70,7 +65,7 @@ async function getAllActiveCUsers(){
 }
 
 //request for getting username from decrypting token
-app.post('/getUsername', async (req,res)=>{
+app.post('/getUsernameFromServer', async (req,res)=>{
     const token = req.body.token;
     const result = await verifyTempToken(token);
     if(result.success){
@@ -162,6 +157,7 @@ async function verifyTempToken(token){
 async function getUserRefreshToken(username){
     const result = await sql `SELECT "refreshToken" FROM users WHERE username = ${username}`
     const token = result[0];
+    console.log('server fetching token: ',token);
     return token.refreshToken;
 }
 
@@ -224,6 +220,43 @@ async function getAllContacts(username){
     }
 }
 
+app.post('/uploadPicture', upload.single('image'), async (req,res)=>{
+    try{
+        const imageBuffer = req.file.buffer;
+        const username = req.body.username;
+        await sql`UPDATE users SET picture = ${imageBuffer} WHERE username = ${username}`;
+        res.status(200).send({'message':'success'})
+    }
+    catch(err){
+        console.error('Error saving image to db ', err);
+        res.status(400).send({'message':'faliure'})
+    }
+    
+})
+app.get('/getProfilePicture',async (req,res)=>{
+    try{
+        const username = req.query.username;
+        const result = await sql`SELECT picture FROM users WHERE username =${username}`;
+        if(result.length>0){
+            const imageBuffer = result[0].picture;
+            const base64Image = Buffer.from(imageBuffer).toString('base64');
+            res.status(200).send({
+                'image':base64Image,
+                contentType: 'image/jpeg'
+            });
+        }
+        else{
+            res.status(404).send({message:'No image found for the user'})
+        }
+    }
+    catch(err){
+        console.error('Error fetching image: ', err)
+        res.status(500).send({message: 'Failed to retrieve image'})
+    }
+    
+
+})
+
 //request to verify token before doing activities
 app.post('/verifyToken',async (req,res)=>{
     const {token} = req.body;
@@ -247,7 +280,12 @@ app.post('/getAllUsers' , async (req,res) => {
 
 
 
+const port = '3000';
 
+app.listen(port,async ()=>{
+    console.log(`listening on port ${port} :D`);
+    await allUsersOffline()
+})
 
 
 

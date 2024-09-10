@@ -9,7 +9,8 @@
 <body>
     <div id="container">
         <div id="profileContainer">
-            <div id="profileIcon"></div>
+            <img id="profileIcon">
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" />
             <div id="nameContainer">
                 <div id="profileName">NAME</div>
             </div>
@@ -18,13 +19,16 @@
             <div>Games:<p id="profileGames"></p></div>
         </div>
         <div id="contactsContainer">
-          <div id="sortingContainer"> 
-            <div id="sortingButtonsContainer">
-                <button class="sortingButton">A-B</button>
-                <button class="sortingButton">Online</button>
+            <div id="sortingContainer"> 
+                <div id="sortingButtonsContainer">
+                    <button class="sortingButton">A-b</button>
+                    <button class="sortingButton">By Online</button>
+                </div>
+                <input id="searchBar" type="text">
             </div>
-            <input id="searchBar" type="text">
-          </div>
+            <div id="contacts">
+            
+            </div>
         </div>
 </body>
 </html>

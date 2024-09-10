@@ -1,4 +1,5 @@
 const {ipcRenderer} = require('electron');
+const { response } = require('../../server/server');
 
 function signOut(){
     goToLogin();
@@ -12,22 +13,39 @@ async function askToken(){
     return new Promise((resolve,reject)=>{
         ipcRenderer.send('tokenRequest');
         ipcRenderer.once('getToken', (event, token) => {
+            console.log('token iss ',token);
             resolve(token);
         });
-
         //timeout if promise takes too long
         setTimeout(() => {
             reject(new Error('Timeout: Token request took too long'));
         }, 5000);
     });
 }
+async function askUsername(){
+    return new Promise((resolve,reject)=>{
+        ipcRenderer.send('getCurrentUsername');
+        ipcRenderer.once('getUsername', (event, username) => {
+            resolve(username);
+        });
 
+        setTimeout(() => {
+            reject(new Error('Timeout: Token request took too long'));
+        }, 5000);
+    })
+}
 //stores token in main.js
 function storeToken (token){
-    ipcRenderer.send('setUserToken',token)
+    ipcRenderer.send('setUserToken',token);
+}
+//stores username in main.js
+function storeUsername (username){
+    ipcRenderer.send('setCurrentUsername',username);
 }
 
-async function createNewToken(username){
+async function createNewToken(){
+    const username = await askUsername();
+    
     const request = await fetch('http://localhost:3000/generateToken',{
         method:'POST',
         headers:{
@@ -46,7 +64,7 @@ async function createNewToken(username){
     }
 }
 //function to verify token if token expired makes new one if cant kicks user
-async function verifyToken(token,username){
+async function verifyToken(token){
     const request = await fetch('http://localhost:3000/verifyToken',{
         method:'POST',
         headers:{
@@ -55,9 +73,10 @@ async function verifyToken(token,username){
         body:JSON.stringify({token})
     });
     const response = await request.json();
-    console.log(response);
     if(response.auth.faliure){
         //if verification failed, a new token is needed if create fails user signs out
+        console.log('token verification failed');
+        const username = await askUsername();
         await createNewToken(username);
         return 'NOT OK';
     }
@@ -83,8 +102,8 @@ function deleteAllChildren(container){
     }
 }
 
-async function sendHeartbeat(username){
-
+async function sendHeartbeat(){
+    const username = await askUsername();
     const request = await fetch('http://localhost:3000/heartbeat',{
         method:'POST',
         headers:{
@@ -105,8 +124,9 @@ async function sendHeartbeat(username){
     await createContactList(username);
 }
 
-async function getUsername(token){
-    const request =  await fetch('http://localhost:3000/getUsername',{
+async function getUsernameFromServer(token){
+    //used for the first instance of getting a username before storing it
+    const request =  await fetch('http://localhost:3000/getUsernameFromServer',{
         method:'POST',
         headers:{
             'Content-Type':'application/json'
@@ -114,9 +134,7 @@ async function getUsername(token){
         body:JSON.stringify({token})
     })
     const data = await request.json();
-    console.log(data.username);
     return data.username;
-
 }
 
 function convertBoolToStatus(bool){
@@ -127,6 +145,8 @@ function convertBoolToStatus(bool){
 }
 
 function sortList(list){
+    //online first then ab
+    // NEED TO DO: ADD THE OPTION OF SORTING PURELY BY AB
     list.sort((a, b) => {
         if (a.onlinestatus === b.onlinestatus) {
             return a.username.localeCompare(b.username);
@@ -135,6 +155,50 @@ function sortList(list){
     });
     return list;
 }
+async function getPictureFromServer(username){
+    const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
+    const data = await response.json();
+    if(data.image){
+        const imgElement = document.getElementById('profileIcon');
+        imgElement.src = `data:${data.contentType};base64,${data.image}`
+    }
+    else if(data.status == 500){
+        alert('Sorry we could not fetch your image')
+    }
+
+}
+document.getElementById('profileIcon').addEventListener('click',()=>{
+    document.getElementById('fileInput').click();
+})
+document.getElementById('fileInput').addEventListener('change',async (event)=>{
+    const file = event.target.files[0]; 
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async (e) =>{
+            // puts the image now to the client
+            const imageUrl = e.target.result;
+            document.getElementById('profileIcon').src = imageUrl;
+            //
+            const formData = new FormData();
+            const username = await askUsername();
+            formData.append('username', username);
+            formData.append('image',file);
+            const bytes = new Uint8Array(imageUrl);
+            fetch('http://localhost:3000/uploadPicture',{
+                method:'POST',
+                body: formData
+            }).then(response => {return response.json();}).then(data => {
+                console.log('Success:', data);
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save image to database.')
+            });
+        }
+        reader.readAsDataURL(file);
+    }
+
+})
+
 
 async function createContactList(username){
     const request = await fetch('http://localhost:3000/getAllUsers',{
@@ -152,9 +216,8 @@ async function createContactList(username){
     else{
         //list of all users names and their status
         document.getElementById('profileName').textContent = username;
-        const container = document.getElementById('contactsContainer');
+        const container = document.getElementById('contacts');
         deleteAllChildren(container);
-        console.log(data.list);
         const list = sortList(data.list);
         await list.map(item => {
 
@@ -213,13 +276,16 @@ async function createContactList(username){
 
 (async ()=>{
     const token = await askToken();
+    
     try{
         const auth = await verifyToken(token);
         if(auth != 'OK'){
             // if token expired need to redeclare it
             
         }
-        const username = await getUsername(token);
+        const username = await getUsernameFromServer(token);
+        storeUsername(username);
+        getPictureFromServer(username);
         await createContactList(username);
         setInterval(()=>{sendHeartbeat(username)}, 30000);
     }   

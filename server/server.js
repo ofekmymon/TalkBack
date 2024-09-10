@@ -237,7 +237,7 @@ app.get('/getProfilePicture',async (req,res)=>{
     try{
         const username = req.query.username;
         const result = await sql`SELECT picture FROM users WHERE username =${username}`;
-        if(result.length>0){
+        if(result[0].picture !== null){
             const imageBuffer = result[0].picture;
             const base64Image = Buffer.from(imageBuffer).toString('base64');
             res.status(200).send({

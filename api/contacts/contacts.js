@@ -285,7 +285,7 @@ async function createContactList(username){
         }
         const username = await getUsernameFromServer(token);
         storeUsername(username);
-        getPictureFromServer(username);
+        await getPictureFromServer(username);
         await createContactList(username);
         setInterval(()=>{sendHeartbeat(username)}, 30000);
     }   

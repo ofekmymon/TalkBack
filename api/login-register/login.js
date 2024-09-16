@@ -49,7 +49,7 @@ async function generateTempToken(username){
     const data = await request.json();
     //save token as a txt
     if(data.success){
-        ipcRenderer.send('setUserToken', data.success);
+        ipcRenderer.send('set-first-token', data.success);
     }
     else if(data.error){
         console.error('Error authenticating Refresh token');

@@ -81,17 +81,10 @@ ipcMain.on('contacts-to-login', () => {
     createLoginWindow();
 });
 ///////////////Token management////////////////
-ipcMain.on('setUserToken',(event ,userToken) =>{
+ipcMain.on('set-first-token',(event ,userToken) =>{
     store.set('userToken',userToken);
-})
-ipcMain.on('tokenRequest',(event) =>{
+});
+ipcMain.on('token-request',(event) =>{
     const token = store.get('userToken');
     event.sender.send('getToken', token);
-})
-ipcMain.on('setCurrentUsername',(event ,username)=>{
-    store.set('username',username);
-})
-ipcMain.on('getCurrentUsername',(event)=>{
-    const username = store.get('username');
-    event.sender.send('getUsername',username);  
-})
+});

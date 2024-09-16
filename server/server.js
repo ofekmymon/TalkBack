@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 const multer = require('multer');
 const bodyParser = require('body-parser');
-const socketio = require('socket.io')
+const socketio = require('socket.io'); //ill use this for chat app
 const postgres = require('postgres');
 const sql = postgres(process.env.DATABASE_URL);
 
@@ -34,6 +34,7 @@ app.post('/heartbeat',(req,res) => {
 
 setInterval(async()=>{
     const now = Date.now();
+    console.log('active clients:' , activeClients);
     newlyOffline = [];
     // newlyOffline.length = 0;
     for (const username in activeClients) {

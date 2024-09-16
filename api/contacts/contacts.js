@@ -1,5 +1,4 @@
 const {ipcRenderer} = require('electron');
-const { response } = require('../../server/server');
 
 function signOut(){
     goToLogin();
@@ -9,11 +8,36 @@ function goToLogin(){
     ipcRenderer.send('switch-to-login');
 }
 
-async function askToken(){
+
+//store on local storage
+function storeToken (token){
+    ipcRenderer.send('set-access-token',token);
+}
+function storeUsername (username){
+    ipcRenderer.send('set-username',username);
+}
+//listen for requests to access storage
+ipcRenderer.on('set-access-token',(event ,token)=>{
+    localStorage.setItem('token',token)
+});
+
+ipcRenderer.on('set-username',(event ,username)=>{
+    localStorage.setItem('username',username);
+});
+//sends request to get from local storage
+function askUsername(){
+    const username = localStorage.getItem('username');
+    return username;
+}
+function askToken(){
+    const token = localStorage.getItem('token');
+    return token;
+}
+
+async function askFirstToken(){
     return new Promise((resolve,reject)=>{
-        ipcRenderer.send('tokenRequest');
+        ipcRenderer.send('token-request');
         ipcRenderer.once('getToken', (event, token) => {
-            console.log('token iss ',token);
             resolve(token);
         });
         //timeout if promise takes too long
@@ -22,27 +46,8 @@ async function askToken(){
         }, 5000);
     });
 }
-async function askUsername(){
-    return new Promise((resolve,reject)=>{
-        ipcRenderer.send('getCurrentUsername');
-        ipcRenderer.once('getUsername', (event, username) => {
-            resolve(username);
-        });
 
-        setTimeout(() => {
-            reject(new Error('Timeout: Token request took too long'));
-        }, 5000);
-    })
-}
-//stores token in main.js
-function storeToken (token){
-    ipcRenderer.send('setUserToken',token);
-}
 //stores username in main.js
-function storeUsername (username){
-    ipcRenderer.send('setCurrentUsername',username);
-}
-
 async function createNewToken(){
     const username = await askUsername();
     
@@ -61,6 +66,7 @@ async function createNewToken(){
     }
     else if(response.success){
         storeToken(response.success);
+        console.log('new token created successfuly');
     }
 }
 //function to verify token if token expired makes new one if cant kicks user
@@ -76,8 +82,7 @@ async function verifyToken(token){
     if(response.auth.faliure){
         //if verification failed, a new token is needed if create fails user signs out
         console.log('token verification failed');
-        const username = await askUsername();
-        await createNewToken(username);
+        await createNewToken();
         return 'NOT OK';
     }
     else{
@@ -275,8 +280,7 @@ async function createContactList(username){
 
 
 (async ()=>{
-    const token = await askToken();
-    
+    const token = await askFirstToken();
     try{
         const auth = await verifyToken(token);
         if(auth != 'OK'){
@@ -287,7 +291,7 @@ async function createContactList(username){
         storeUsername(username);
         await getPictureFromServer(username);
         await createContactList(username);
-        setInterval(()=>{sendHeartbeat(username)}, 30000);
+        setInterval(()=>{sendHeartbeat(username)}, 25000);
     }   
     catch(err){
         console.log('error : ',err);

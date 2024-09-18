@@ -11,27 +11,28 @@ function goToLogin(){
 
 //store on local storage
 function storeToken (token){
-    ipcRenderer.send('set-access-token',token);
+    localStorage.setItem('token',token);
 }
 function storeUsername (username){
-    ipcRenderer.send('set-username',username);
+    localStorage.setItem('username', username);
 }
-//listen for requests to access storage
-ipcRenderer.on('set-access-token',(event ,token)=>{
-    localStorage.setItem('token',token)
-});
-
-ipcRenderer.on('set-username',(event ,username)=>{
-    localStorage.setItem('username',username);
-});
+function storeSortMeth(sortMethod){
+    localStorage.setItem('sortMeth',sortMethod);
+}
 //sends request to get from local storage
 function askUsername(){
     const username = localStorage.getItem('username');
+    console.log('local storage says username is: ',username);
     return username;
 }
 function askToken(){
     const token = localStorage.getItem('token');
+    console.log('local storage says token is: ',token);
     return token;
+}
+function askSortMeth(){
+    const sortMeth = localStorage.getItem('sortMeth');
+    return sortMeth;
 }
 
 async function askFirstToken(){
@@ -46,10 +47,11 @@ async function askFirstToken(){
         }, 5000);
     });
 }
-
+document.getElementById('signout').addEventListener('click',signOut);
 //stores username in main.js
 async function createNewToken(){
-    const username = await askUsername();
+    const username = askUsername();
+    console.log('username in create new token is: ',username);
     
     const request = await fetch('http://localhost:3000/generateToken',{
         method:'POST',
@@ -148,8 +150,26 @@ function convertBoolToStatus(bool){
     }
     return 'Offline'
 }
+function searchbar(list){
+    const filter = document.getElementById('searchBar').value;
+   return list.filter(item => {
+        const text = item.username.toLocaleLowerCase();
+        return text.includes(filter);
+   })
+}
 
-function sortList(list){
+document.getElementById('searchBar').addEventListener('input',()=>{
+    createContactList(askUsername())
+});
+
+function sortListByAb(list){
+    list.sort((a, b) =>{
+        return a.username.localeCompare(b.username);
+    })
+    console.log(list);
+    return list;
+}
+function sortListByOnline(list){
     //online first then ab
     // NEED TO DO: ADD THE OPTION OF SORTING PURELY BY AB
     list.sort((a, b) => {
@@ -160,6 +180,14 @@ function sortList(list){
     });
     return list;
 }
+document.getElementById('sortByAb').addEventListener('click',()=>{
+    storeSortMeth('ab');
+    createContactList(askUsername());
+});
+document.getElementById('sortByOnline').addEventListener('click',()=>{
+    storeSortMeth('online');
+    createContactList(askUsername());
+});
 async function getPictureFromServer(username){
     const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
     const data = await response.json();
@@ -223,7 +251,15 @@ async function createContactList(username){
         document.getElementById('profileName').textContent = username;
         const container = document.getElementById('contacts');
         deleteAllChildren(container);
-        const list = sortList(data.list);
+        const sortOption = askSortMeth();
+        //if initiated by searchbar and it has content inside, filter it
+        let list = searchbar(data.list);
+        if(sortOption === 'ab'){
+            list = sortListByAb(list);
+        }
+        else{
+            list = sortListByOnline(list);
+        }
         await list.map(item => {
 
             //THIS IS THE FORMAT
@@ -281,6 +317,7 @@ async function createContactList(username){
 
 (async ()=>{
     const token = await askFirstToken();
+    
     try{
         const auth = await verifyToken(token);
         if(auth != 'OK'){
@@ -288,10 +325,12 @@ async function createContactList(username){
             
         }
         const username = await getUsernameFromServer(token);
+        storeSortMeth('online');
+        console.log('username from server is: ',username);
         storeUsername(username);
         await getPictureFromServer(username);
         await createContactList(username);
-        setInterval(()=>{sendHeartbeat(username)}, 25000);
+        setInterval(()=>{sendHeartbeat(username)}, 30000);
     }   
     catch(err){
         console.log('error : ',err);

@@ -1,0 +1,113 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    background-color: #800080;
+    display: flex;
+    flex-direction: column;
+}
+
+#recepientContainer {
+    background-color: #424242;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 7%;  
+    width: 100%;
+}
+
+#recepientDetails {
+    width: 25%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#recepientPicture {
+    height: 80%;
+    width: 35%;
+    border-radius: 50%;
+    background-color: red;
+}
+
+#chatContainer {
+    background-image: url('../../public/chat-background.webp');
+    display:flex;
+    flex-direction: column;
+    flex-grow: 1; 
+    width: 100%;
+    overflow-y: auto;
+}
+.chatMessage {
+    position: relative;
+    min-height: 5%;
+    width: fit-content;
+    max-width: 80%;
+    color: white;
+    margin: 8px;
+    padding: 5px;
+    word-wrap: break-word;
+    text-wrap: wrap;
+}
+.chatMessage::after{
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    top: 0px;
+}
+.youMessage{
+    background-color: rgb(0, 168, 73);
+    align-self: flex-end;
+    margin-right: 15px;
+}
+.youMessage::after{
+    border-left: 15px solid  rgb(0, 168, 73);
+    right: -14px;
+}
+.themMessage{
+    background-color: #424242;
+    align-self: flex-start;
+    margin-left: 15px;
+}
+.themMessage::after{
+    border-right: 15px solid  #424242;
+    left: -14px;
+}
+
+
+
+
+#inputContainer {
+    background-color: #424242;
+    height: 13%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+}
+
+#chatText {
+    margin: 5px;
+    width: 80%;
+    min-height: 30%;
+}
+
+#sendButton {
+    background-color: lime;
+    color: white;
+    height: 50%;
+    width: 15%;
+    border-radius: 50%;
+}

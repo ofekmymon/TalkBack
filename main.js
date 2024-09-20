@@ -10,6 +10,7 @@ const createContactWindow = () => {
     const ContactWindow = new BrowserWindow({
         width: 650,
         height: 600,
+        maximizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -23,6 +24,7 @@ const createLoginWindow = () => {
     loginWindow = new BrowserWindow({
         width: 250,
         height: 350,
+        maximizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -37,16 +39,31 @@ const createRegisterWindow = () => {
     registerWindow = new BrowserWindow({
         width: 250,
         height: 350,
+        maximizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
         }
     });
+    loginWindow.removeMenu();
     registerWindow.loadFile('./api/login-register/register.html');
 };
 
+const createChatWindow = () => {
+    chatWindow = new BrowserWindow({
+        width: 330,
+        height: 530,
+        // maximizable: false,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
+    });
+    chatWindow.loadFile('./api/chat/chat.html');
+}
+
 app.on('ready', () => {
-    createRegisterWindow();
+    createChatWindow();
 });
 
 

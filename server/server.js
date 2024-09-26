@@ -1,3 +1,4 @@
+const http = require('http');
 require('dotenv').config();
 const jwt =  require('jsonwebtoken');
 const express = require('express');
@@ -14,42 +15,55 @@ app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '10mb' })); //
 app.use(bodyParser.json());
 
 app.use(express.static('api'));
-// const io = socketio(server);
+const server = http.createServer(app);
+const io = socketio(server);
 const upload = multer();
 
 
-
-//// INACTIVE USER FINDER /////
-
-
+//Handle Socket.io events
 const activeClients = {};
-let newlyOffline = [];
+io.on('connection', (socket)=>{
+    socket.on('log-user', (username)=>{ 
+        console.log('User registered:', username, ' ', socket.id);
+        activeClients[username] = socket.id;
+        console.log(activeClients);
+        io.emit('active-users-update', Object.keys(activeClients));
+        console.log('sent ', activeClients);
+    });
+    
+    socket.on('disconnect',()=>{
+        try{
+            const username = Object.keys(activeClients).find(key => activeClients[key] === socket.id);
+            delete activeClients[username];
+            console.log('User disconnected: ', username);  
+            io.emit('active-users-update', Object.keys(activeClients));
+        }
+        catch(error){
+            return console.error('Error disconnecting user: ',error)
+        }
+    });
 
-app.post('/heartbeat',(req,res) => {
-    const clientName = req.body.username;
-    activeClients[clientName] = Date.now();
-    res.send({'statusCode':'OK',newlyOffline});
+    socket.on('active-users', () => {
+        console.log('active users : ', Object.keys(activeClients));
+        
+        socket.emit('active-users-response', Object.keys(activeClients));
+    });
+
+    socket.on('send-chat-request',(recipientUsername) => {
+        const recipientSocketId = activeClients[recipientUsername];
+        if(recipientSocketId){
+            io.to(recipientSocketId).emit('listen-for-chat-requests', recipientUsername);
+        }
+        else{
+            console.log(`User ${recipientUsername} is offline`);
+        }
+    })
+
+
+
+
 });
 
-
-setInterval(async()=>{
-    const now = Date.now();
-    console.log('active clients:' , activeClients);
-    newlyOffline = [];
-    // newlyOffline.length = 0;
-    for (const username in activeClients) {
-        if (now - activeClients[username] > 60000) {
-            //get the name of the offline user
-            newlyOffline.push(username);
-            delete activeClients[username];
-            await makeUserOffline(username); 
-            console.log(`Client ${username} has been inactive and removed from the list.`);
-        }
-    };
-},30000) //every 30 seconds
-
-
-//////////////////////////////
 
 //request to check if username exists
 app.post("/findUsername", async (req,res)=>{ 
@@ -59,11 +73,6 @@ app.post("/findUsername", async (req,res)=>{
     else{res.send({'response':'OK'})}
 })
 
-
-async function getAllActiveCUsers(){
-    const active = await sql`SELECT * FROM users WHERE onlinestatus = ${true}`;
-    return active;
-}
 
 //request for getting username from decrypting token
 app.post('/getUsernameFromServer', async (req,res)=>{
@@ -283,7 +292,7 @@ app.post('/getAllUsers' , async (req,res) => {
 
 const port = '3000';
 
-app.listen(port,async ()=>{
+server.listen(port,async ()=>{
     console.log(`listening on port ${port} :D`);
     await allUsersOffline()
 })

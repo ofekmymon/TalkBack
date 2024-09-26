@@ -1,5 +1,6 @@
 body{
     background-color:skyblue;
+    font-family: Arial, Helvetica, sans-serif;
     height: 500px;
 }
 #container{
@@ -41,7 +42,7 @@ body{
     text-align: center;
 }
 #contactsContainer{
-    background-color: #333;
+    background-color:   white;
     height: 99.8%;
     width: 65%;   
     border: 1px solid black;
@@ -50,6 +51,12 @@ body{
     width: 100%;
     height: 94.9%;
     overflow-y: auto;
+}
+.contactProfilePicture{
+    width: 7%;
+    height: 30%;
+    border-radius: 50%;
+    background-color: black;
 }
 #sortingContainer{
     display: flex;
@@ -68,6 +75,7 @@ body{
     border-bottom: 1px black solid;
     background-color: white;
     display: flex;
+    font-size: larger;
     justify-content: space-between;
     align-items: center;
 }
@@ -77,9 +85,10 @@ body{
 
 
 .contactDetails{
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
 }
 .contactStatus.Online{

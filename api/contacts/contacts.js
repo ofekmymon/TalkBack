@@ -1,5 +1,6 @@
 const {ipcRenderer} = require('electron');
-
+const {io} = require('socket.io-client');
+const socket = io('http://localhost:3000');
 function signOut(){
     goToLogin();
 }
@@ -16,9 +17,6 @@ function storeToken (token){
 function storeUsername (username){
     localStorage.setItem('username', username);
 }
-function storeSortMeth(sortMethod){
-    localStorage.setItem('sortMeth',sortMethod);
-}
 //sends request to get from local storage
 function askUsername(){
     const username = localStorage.getItem('username');
@@ -30,10 +28,7 @@ function askToken(){
     console.log('local storage says token is: ',token);
     return token;
 }
-function askSortMeth(){
-    const sortMeth = localStorage.getItem('sortMeth');
-    return sortMeth;
-}
+
 
 async function askFirstToken(){
     return new Promise((resolve,reject)=>{
@@ -92,16 +87,6 @@ async function verifyToken(token){
     }
 } 
 
-function catchDisconnected(list){
-    if(list.length > 0){
-        let names = '';
-        list.forEach((name) =>{
-            names += ` ${name}\n`
-        })
-        console.log(names);
-        alert(`${names} have disconnected`);
-    }   
-}
 
 function deleteAllChildren(container){
     while(container.firstChild){
@@ -109,27 +94,6 @@ function deleteAllChildren(container){
     }
 }
 
-async function sendHeartbeat(){
-    const username = await askUsername();
-    const request = await fetch('http://localhost:3000/heartbeat',{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({username})
-    });
-    const response = await request.json();
-
-    const token = await askToken();
-    if(!response.statusCode === 'OK'){
-        console.error('Failed to send heartbeat');
-    }
-    if(response.newlyOffline.length > 0){
-        catchDisconnected(response.newlyOffline);
-    }
-    await verifyToken(token,username);
-    await createContactList(username);
-}
 
 async function getUsernameFromServer(token){
     //used for the first instance of getting a username before storing it
@@ -150,50 +114,46 @@ function convertBoolToStatus(bool){
     }
     return 'Offline'
 }
-function searchbar(list){
-    const filter = document.getElementById('searchBar').value;
-   return list.filter(item => {
-        const text = item.username.toLocaleLowerCase();
-        return text.includes(filter);
-   })
+
+function searchbar(list) {
+    const filter = document.getElementById('searchBar').value.toLowerCase(); 
+    return list.filter(item => item.toLowerCase().includes(filter)); 
 }
 
 document.getElementById('searchBar').addEventListener('input',()=>{
-    createContactList(askUsername())
+    socket.emit('active-users');
+    socket.once('active-users-response', (activeClients) => {
+        const filteredUsers = searchbar(activeClients);
+        console.log('filtered users ',filteredUsers);
+        createContactList(askUsername(), filteredUsers);
+    });
 });
 
-function sortListByAb(list){
-    list.sort((a, b) =>{
-        return a.username.localeCompare(b.username);
-    })
-    console.log(list);
-    return list;
-}
-function sortListByOnline(list){
-    //online first then ab
-    // NEED TO DO: ADD THE OPTION OF SORTING PURELY BY AB
+function sortList(list){
     list.sort((a, b) => {
         if (a.onlinestatus === b.onlinestatus) {
-            return a.username.localeCompare(b.username);
+            return a.localeCompare(b.username);
         }
         return a.onlinestatus ? -1 : 1;
     });
     return list;
 }
-document.getElementById('sortByAb').addEventListener('click',()=>{
-    storeSortMeth('ab');
-    createContactList(askUsername());
-});
-document.getElementById('sortByOnline').addEventListener('click',()=>{
-    storeSortMeth('online');
-    createContactList(askUsername());
-});
-async function getPictureFromServer(username){
+
+async function getPictureFromServer(username,method){
+    console.log('getting username for picture ',username);
+    
     const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
     const data = await response.json();
     if(data.image){
-        const imgElement = document.getElementById('profileIcon');
-        imgElement.src = `data:${data.contentType};base64,${data.image}`
+        if(method === 'profile'){
+            const imgElement = document.getElementById('profileIcon');
+            imgElement.src = `data:${data.contentType};base64,${data.image}`
+        }
+        else if(method === 'contacts'){
+            const imgElement = document.getElementById(`img-${username}`);
+            imgElement.src = `data:${data.contentType};base64,${data.image}`
+        }
+        
     }
     else if(data.status == 500){
         alert('Sorry we could not fetch your image')
@@ -213,7 +173,7 @@ document.getElementById('fileInput').addEventListener('change',async (event)=>{
             document.getElementById('profileIcon').src = imageUrl;
             //
             const formData = new FormData();
-            const username = await askUsername();
+            const username = askUsername();
             formData.append('username', username);
             formData.append('image',file);
             const bytes = new Uint8Array(imageUrl);
@@ -232,42 +192,27 @@ document.getElementById('fileInput').addEventListener('change',async (event)=>{
 
 })
 
-
-async function createContactList(username){
-    const request = await fetch('http://localhost:3000/getAllUsers',{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({username})
-    })
-    const data = await request.json();
-    if(await data.error){
+function createContactList(username,userList){
+    if(!userList){
         console.log(data.error);
         signOut();
     }
     else{
-        //list of all users names and their status
-        document.getElementById('profileName').textContent = username;
+        console.log('sending create contact list userlist : ', userList);
+        
+        //remove own username from list
+        let allClients = userList.toSpliced(userList.indexOf(username),1); 
         const container = document.getElementById('contacts');
         deleteAllChildren(container);
-        const sortOption = askSortMeth();
-        //if initiated by searchbar and it has content inside, filter it
-        let list = searchbar(data.list);
-        if(sortOption === 'ab'){
-            list = sortListByAb(list);
-        }
-        else{
-            list = sortListByOnline(list);
-        }
-        await list.map(item => {
 
+        allClients = sortList(allClients);
+        console.log('SHOULD SHOW ALL OTHER USERS: ',allClients);
+        allClients.map(item => {
             //THIS IS THE FORMAT
             //     <div class="contactContainer">
             //         <div class="contactName">Name</div>
             //         <div class="contactDetails">
             //             <button class="gameButton">PlayGame</button>
-            //             <div class="contactStatus online">online</div>  
             //             <button class="chatButton">Chat</button>
             //         </div>
             //     </div>
@@ -277,35 +222,36 @@ async function createContactList(username){
             const status = convertBoolToStatus(item.onlinestatus);
 
             const contactContainer = document.createElement('div');
-            contactContainer.id = item.username;
+            contactContainer.id = item;
             contactContainer.classList.add('contactContainer');
 
             const contactName = document.createElement('div');
-            contactName.textContent = item.username;
-            contactName.classList.add('contactName')
+            contactName.textContent = item;
+            contactName.classList.add('contactName');
+
+            const profilePicture = document.createElement('img');
+            profilePicture.classList.add('contactProfilePicture')
+            profilePicture.id = `img-${item}`;
+            getPictureFromServer(item,'contacts');
 
             const contactDetails = document.createElement('div');
             contactDetails.classList.add('contactDetails');
 
             const gameButton = document.createElement('button');
-            gameButton.id = item.username;
+            gameButton.id = item;
             gameButton.textContent = 'Play Game'
             gameButton.classList.add('gameButton');
 
-            const contactStatus = document.createElement('div');
-            contactStatus.textContent = status;
-            contactStatus.classList.add(status);
-            contactStatus.classList.add('contactStatus');
-
             const chatButton = document.createElement('button');
-            chatButton.id = item.username;
-            chatButton.textContent = 'Chat'
+            chatButton.id = item;
+            chatButton.textContent = 'Chat';
             chatButton.classList.add('chatButton');
+            chatButton.addEventListener('click',()=>{sendChatRequest(item)})
 
             contactDetails.appendChild(gameButton);
-            contactDetails.appendChild(contactStatus);
             contactDetails.appendChild(chatButton);
 
+            contactContainer.appendChild(profilePicture)
             contactContainer.appendChild(contactName);
             contactContainer.appendChild(contactDetails);
 
@@ -313,24 +259,30 @@ async function createContactList(username){
         })
     }
 }
+function sendChatRequest(username){
+    socket.emit('send-chat-request',username);
+}
 
 
 (async ()=>{
     const token = await askFirstToken();
-    
     try{
-        const auth = await verifyToken(token);
-        if(auth != 'OK'){
-            // if token expired need to redeclare it
-            
-        }
         const username = await getUsernameFromServer(token);
-        storeSortMeth('online');
-        console.log('username from server is: ',username);
+        document.getElementById('profileName').textContent = username;
+        socket.on('connect', ()=>{
+            console.log('Connected to server with socket ID: ', socket.id);
+            //send username to server to add it to active list
+            socket.emit('log-user', username);
+        })
         storeUsername(username);
-        await getPictureFromServer(username);
-        await createContactList(username);
-        setInterval(()=>{sendHeartbeat(username)}, 30000);
+        await getPictureFromServer(username,'profile');
+        socket.on('active-users-update',(activeClients)=>{
+            console.log('active clients are: ', activeClients);
+            createContactList(username,activeClients);
+        });
+        socket.on('listen-for-chat-requests',(user)=>{
+            console.log('User ',user,' has requested to chat with you');
+        })
     }   
     catch(err){
         console.log('error : ',err);

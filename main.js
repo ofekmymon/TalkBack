@@ -45,7 +45,7 @@ const createRegisterWindow = () => {
             contextIsolation: false,
         }
     });
-    loginWindow.removeMenu();
+    registerWindow.removeMenu();
     registerWindow.loadFile('./api/login-register/register.html');
 };
 
@@ -63,7 +63,7 @@ const createChatWindow = () => {
 }
 
 app.on('ready', () => {
-    createChatWindow();
+    createRegisterWindow();
 });
 
 

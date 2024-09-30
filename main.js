@@ -4,10 +4,13 @@ const path = require('path')
 
 let loginWindow;
 let registerWindow;
+let ContactWindow;
+let ChatRequestWindow;
 const store = new Store();
 
+
 const createContactWindow = () => {
-    const ContactWindow = new BrowserWindow({
+    ContactWindow = new BrowserWindow({
         width: 650,
         height: 600,
         maximizable: false,
@@ -47,6 +50,24 @@ const createRegisterWindow = () => {
     });
     registerWindow.removeMenu();
     registerWindow.loadFile('./api/login-register/register.html');
+};
+
+const createChatRequestsWindow = (requests) => {
+    ChatRequestWindow = new BrowserWindow({
+        width:300,
+        height:500,
+        modal:true,
+        parent:ContactWindow,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
+    });
+    ChatRequestWindow.loadFile('./api/chatRequest/chatRequest.html');
+    //sends the client the activity requests
+    ChatRequestWindow.webContents.once('did-finish-load', () => {
+        ChatRequestWindow.send('chat-request',requests);
+    });
 };
 
 const createChatWindow = () => {
@@ -97,6 +118,11 @@ ipcMain.on('contacts-to-login', () => {
     }
     createLoginWindow();
 });
+ipcMain.on('open-chat-requests-menu',(event,requests) => {
+    createChatRequestsWindow(requests);
+})
+
+
 ///////////////Token management////////////////
 ipcMain.on('set-first-token',(event ,userToken) =>{
     store.set('userToken',userToken);

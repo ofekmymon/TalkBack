@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Request</title>
+    <link rel="stylesheet" href="chatRequest.css">
+    
+</head>
+<body>
+    <div id="container">
+        <div id="title">Chat Requests</div>
+        <div id="requestsContainer">
+            
+        </div>
+    </div>
+    
+
+
+    <script>
+        const {ipcRenderer} = require('electron');
+        console.log('creating title');
+
+        function createRequests(requests){
+            
+            // FORMAT
+            // <div class="request">
+            //     <p class="requestTitle">NAME wants to ACTIVITY with you</p>
+            //     <div class="buttonContainer">
+            //         <button class="requestButton" id="acceptBtn">Accept</button>
+            //         <button class="requestButton" id="rejectBtn">Reject</button>
+            //     </div>
+            // </div>
+            console.log(requests);
+            const parsedRequests = JSON.parse(requests);
+            console.log(parsedRequests);
+            
+            if (!Array.isArray(parsedRequests)) {
+                console.error('Expected an array but got:', typeof parsedRequests);
+                return;
+            }
+            
+            parsedRequests.forEach(request => {
+
+                
+
+                const requestContainer = document.createElement('div');
+                requestContainer.classList.add('request');
+
+                const title = document.createElement('p');
+                title.classList.add('requestTitle');
+                title.textContent = `${request.sender} wants to ${request.activityType} with you`
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('buttonContainer');
+                
+                const acceptBtn = document.createElement('button');
+                acceptBtn.textContent = 'Accept';
+                acceptBtn.id = `${request.sender}-accept`;
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.textContent = 'Reject';
+                rejectBtn.id = `${request.sender}-reject`;
+                
+                buttonContainer.appendChild(acceptBtn);
+                buttonContainer.appendChild(rejectBtn);
+
+                requestContainer.appendChild(title);
+                requestContainer.appendChild(buttonContainer);
+
+                document.getElementById('requestsContainer').appendChild(requestContainer);
+
+            });
+            
+            }
+            
+
+        ipcRenderer.on('chat-request', (event, requests) => {
+            console.log('Requests are: ',requests);
+            
+            createRequests(requests);
+
+        });
+        // document.getElementById('accept').addEventListener('click',()=>{
+        //     ipcRenderer.send('chat-request-response', 'accept');
+        // })
+        // document.getElementById('reject').addEventListener('click',()=>{
+        //     ipcRenderer.send('chat-request-response', 'reject');
+        // })
+
+    </script>
+</body>
+</html>

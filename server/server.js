@@ -49,10 +49,11 @@ io.on('connection', (socket)=>{
         socket.emit('active-users-response', Object.keys(activeClients));
     });
 
-    socket.on('send-chat-request',(recipientUsername) => {
-        const recipientSocketId = activeClients[recipientUsername];
+    socket.on('send-chat-request',(request) => {
+        console.log(request);
+        const recipientSocketId = activeClients[request.recipient];
         if(recipientSocketId){
-            io.to(recipientSocketId).emit('listen-for-chat-requests', recipientUsername);
+            io.to(recipientSocketId).emit('listen-for-chat-requests', request);
         }
         else{
             console.log(`User ${recipientUsername} is offline`);

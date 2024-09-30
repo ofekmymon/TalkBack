@@ -1,6 +1,20 @@
 const {ipcRenderer} = require('electron');
 const {io} = require('socket.io-client');
 const socket = io('http://localhost:3000');
+
+
+
+class Request {
+    constructor(sender,activityType,recipient){
+        this.activityType = activityType,
+        this.sender = sender
+        this.recipient = recipient
+    }
+};
+
+
+
+
 function signOut(){
     goToLogin();
 }
@@ -17,16 +31,23 @@ function storeToken (token){
 function storeUsername (username){
     localStorage.setItem('username', username);
 }
+function storeRequests(request) {
+    let requests = sessionStorage.getItem('requests') || [];
+    requests.push(request);
+    sessionStorage.setItem('requests', JSON.stringify(requests));
+}
 //sends request to get from local storage
 function askUsername(){
     const username = localStorage.getItem('username');
-    console.log('local storage says username is: ',username);
     return username;
 }
 function askToken(){
     const token = localStorage.getItem('token');
-    console.log('local storage says token is: ',token);
     return token;
+}
+function askRequests(){
+    const requests = sessionStorage.getItem('requests') || [];
+    return requests;
 }
 
 
@@ -160,6 +181,11 @@ async function getPictureFromServer(username,method){
     }
 
 }
+document.getElementById('requestsMenu').addEventListener('click',()=>{
+    document.getElementById('requestsMenuNotifier').classList.remove('new');
+    const requests = askRequests();
+    ipcRenderer.send('open-chat-requests-menu',requests);
+});
 document.getElementById('profileIcon').addEventListener('click',()=>{
     document.getElementById('fileInput').click();
 })
@@ -246,7 +272,7 @@ function createContactList(username,userList){
             chatButton.id = item;
             chatButton.textContent = 'Chat';
             chatButton.classList.add('chatButton');
-            chatButton.addEventListener('click',()=>{sendChatRequest(item)})
+            chatButton.addEventListener('click',()=>{sendRequest(askUsername(),'chat',item)});
 
             contactDetails.appendChild(gameButton);
             contactDetails.appendChild(chatButton);
@@ -259,8 +285,9 @@ function createContactList(username,userList){
         })
     }
 }
-function sendChatRequest(username){
-    socket.emit('send-chat-request',username);
+function sendRequest(username,activity,recipient){
+    const request = new Request(username,activity,recipient);
+    socket.emit('send-chat-request',request);
 }
 
 
@@ -280,8 +307,9 @@ function sendChatRequest(username){
             console.log('active clients are: ', activeClients);
             createContactList(username,activeClients);
         });
-        socket.on('listen-for-chat-requests',(user)=>{
-            console.log('User ',user,' has requested to chat with you');
+        socket.on('listen-for-chat-requests',(request)=>{
+            document.getElementById('requestsMenuNotifier').classList.add('new');
+            storeRequests(request);
         })
     }   
     catch(err){

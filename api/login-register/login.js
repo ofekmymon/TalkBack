@@ -23,20 +23,7 @@ function getLastUser(){
    }) 
 }
 
-async function userOnline(username){
-    const request = await fetch('http://localhost:3000/userOnline',{
-        method:"POST",
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({username})
-    })
-    const data = await request.json();
-    if(data.success){
-        console.log('user online');
-    }
-    console.log('failed turning user online');
-}
+
 
 async function generateTempToken(username){
     const request = await fetch('http://localhost:3000/generateToken',{
@@ -72,7 +59,6 @@ async function login(){
         //LOG IN = ENTER THE CONTACTS LIST AND GENERATE JWT TOKEN FROM SERVER 
         saveLastUser(username)
         await generateTempToken(username);
-        await userOnline(username);
         goToContacts();
         
     }

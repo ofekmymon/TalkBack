@@ -28,6 +28,7 @@ html,body{
     flex-direction: column;
 }
 .request{
+    margin: 5px;
     border-bottom: 1px solid black;
     display: flex;
     align-items: center;

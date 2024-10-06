@@ -1,4 +1,4 @@
-const {ipcRenderer} = require('electron');
+const {ipcRenderer, session} = require('electron');
 const {io} = require('socket.io-client');
 const socket = io('http://localhost:3000');
 
@@ -26,23 +26,33 @@ function goToLogin(){
 
 //store on local storage
 function storeToken (token){
-    localStorage.setItem('token',token);
+    sessionStorage.setItem('token',token);
 }
 function storeUsername (username){
-    localStorage.setItem('username', username);
+    sessionStorage.setItem('username', username);
 }
 function storeRequests(request) {
-    let requests = sessionStorage.getItem('requests') || [];
+    let requests = askRequests() || [];
+    if (!Array.isArray(requests)) {
+        if(typeof requests === 'string'){
+            requests = JSON.parse(requests);
+        }
+        else{
+            console.error('Expected an array but got:', typeof requests);
+            return;
+        }
+    }
     requests.push(request);
+    requests = removeDuplicates(requests);
     sessionStorage.setItem('requests', JSON.stringify(requests));
 }
 //sends request to get from local storage
 function askUsername(){
-    const username = localStorage.getItem('username');
+    const username = sessionStorage.getItem('username');
     return username;
 }
 function askToken(){
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     return token;
 }
 function askRequests(){
@@ -64,57 +74,44 @@ async function askFirstToken(){
     });
 }
 document.getElementById('signout').addEventListener('click',signOut);
-//stores username in main.js
-async function createNewToken(){
-    const username = askUsername();
-    console.log('username in create new token is: ',username);
+
+function removeDuplicates(list){
     
-    const request = await fetch('http://localhost:3000/generateToken',{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({username})
+    const uniqueArray = list.filter((item, index) => {
+    const itemString = JSON.stringify(item);
+    return index === list.findIndex(obj => {
+        return JSON.stringify(obj) === itemString;
     });
-    const response = await request.json();
-    if(response.error){
-        //sign user out and kick to login screen
-        alert('error verifying session');
-        signOut(username);
-    }
-    else if(response.success){
-        storeToken(response.success);
-        console.log('new token created successfuly');
-    }
-}
-//function to verify token if token expired makes new one if cant kicks user
-async function verifyToken(token){
-    const request = await fetch('http://localhost:3000/verifyToken',{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({token})
     });
-    const response = await request.json();
-    if(response.auth.faliure){
-        //if verification failed, a new token is needed if create fails user signs out
-        console.log('token verification failed');
-        await createNewToken();
-        return 'NOT OK';
-    }
-    else{
-        return 'OK'
-    }
-} 
-
-
+    
+    return uniqueArray;
+};
+ipcRenderer.on('delete-message',(event,messageId) => {
+    deleteRequest(messageId);
+})
 function deleteAllChildren(container){
     while(container.firstChild){
         container.removeChild(container.firstChild);
     }
-}
+};
 
+function deleteRequest(request){
+    const list = JSON.parse(askRequests());
+    const message = request.split('-');
+    //order is important
+    const tempObject = {activityType:message[1],sender:message[0],recipient:askUsername()};
+    console.log(tempObject);
+    const toDelete = JSON.stringify(tempObject);
+    console.log(toDelete);
+    
+    const updatedList = list.filter((item)=>{
+        console.log(JSON.stringify(item));
+        return JSON.stringify(item) !== toDelete;
+    })
+    console.log(updatedList);
+    
+    sessionStorage.setItem('requests', JSON.stringify(updatedList));
+}
 
 async function getUsernameFromServer(token){
     //used for the first instance of getting a username before storing it
@@ -150,15 +147,13 @@ document.getElementById('searchBar').addEventListener('input',()=>{
     });
 });
 
-function sortList(list){
-    list.sort((a, b) => {
-        if (a.onlinestatus === b.onlinestatus) {
-            return a.localeCompare(b.username);
-        }
-        return a.onlinestatus ? -1 : 1;
-    });
-    return list;
-}
+document.getElementById('refresh').addEventListener('click',()=>{
+    socket.emit('active-users');
+    socket.once('active-users-response',(activeClients) =>{
+        createContactList(askUsername(),activeClients);
+    })
+
+});
 
 async function getPictureFromServer(username,method){
     console.log('getting username for picture ',username);
@@ -219,6 +214,12 @@ document.getElementById('fileInput').addEventListener('change',async (event)=>{
 })
 
 function createContactList(username,userList){
+    console.log('getting data from contactlist');
+    
+    console.log(username);
+    console.log(userList);
+    
+    
     if(!userList){
         console.log(data.error);
         signOut();
@@ -231,7 +232,6 @@ function createContactList(username,userList){
         const container = document.getElementById('contacts');
         deleteAllChildren(container);
 
-        allClients = sortList(allClients);
         console.log('SHOULD SHOW ALL OTHER USERS: ',allClients);
         allClients.map(item => {
             //THIS IS THE FORMAT

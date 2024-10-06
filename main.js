@@ -82,6 +82,8 @@ const createChatWindow = () => {
     });
     chatWindow.loadFile('./api/chat/chat.html');
 }
+//development line
+app.setPath('userData', path.join(app.getPath('userData'), 'client_' + Math.random()));
 
 app.on('ready', () => {
     createRegisterWindow();
@@ -121,7 +123,9 @@ ipcMain.on('contacts-to-login', () => {
 ipcMain.on('open-chat-requests-menu',(event,requests) => {
     createChatRequestsWindow(requests);
 })
-
+ipcMain.on('reject-message',(event,messageId)=>{
+    ContactWindow.webContents.send('delete-message', messageId);
+});
 
 ///////////////Token management////////////////
 ipcMain.on('set-first-token',(event ,userToken) =>{

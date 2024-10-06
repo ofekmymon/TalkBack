@@ -59,10 +59,6 @@ io.on('connection', (socket)=>{
             console.log(`User ${recipientUsername} is offline`);
         }
     })
-
-
-
-
 });
 
 
@@ -122,35 +118,24 @@ app.post('/getRefreshToken',(req,res)=>{
     res.send({refreshToken});
 })
 
-async function userOffline(username){
-    await sql`UPDATE users SET onlinestatus = ${false} WHERE username = ${username}`;
+function userOffline(username){
+    const socket = activeClients[username];
+    socket.disconnect();
 }
 
 //function to verify refresh token
-async function verifyRefreshToken(token,username){
+function verifyRefreshToken(token,username){
     try{
         const user = jwt.verify(token , process.env.REFRESH_TOKEN_SECRET);
         return {'success':'user can get new token'}
     }
     catch(err){
         console.error('error verifying refreshToken: '+ err)
-        await userOffline(username);
+        userOffline(username);
         return {'faliure':'cannot verify refresh user now offline'}
     }
 }
 
-async function makeUserOnline(username){
-    console.log(username + ` Turned Online`);
-    await sql `UPDATE users SET onlinestatus = ${true} WHERE username = ${username}`;
-}
-async function makeUserOffline(username){
-    console.log(username + ` Turned Offline`);
-    await sql `UPDATE users SET onlinestatus = ${false} WHERE username = ${username}`;
-}
-
-async function allUsersOffline(){
-    await sql` UPDATE users SET onlinestatus = ${false}`
-}
 
 //function to verify temp token
 async function verifyTempToken(token){
@@ -172,24 +157,10 @@ async function getUserRefreshToken(username){
     return token.refreshToken;
 }
 
-//request to change user's online status to online
-app.post('/userOnline',async (req,res)=>{
-    const {username} = req.body;
-    try{
-        makeUserOnline(username); 
-        res.send({'success':'user online'})
-    }
-    catch{
-        res.send({'faliure':'user not online'})
-    }
-    
-})
-
-//request to change user's online status to offline
 app.post('/userOffline',async (req,res)=>{
     const {username} = req.body;
     try{
-        makeUserOffline(username); 
+        userOffline(username);
         console.log('user offline');
         res.send({'success':'user offline'})
     }
@@ -207,7 +178,7 @@ function generateTempToken(username){
 app.post('/generateToken',async (req,res)=>{
     const username = req.body.username;
     const refreshToken = await getUserRefreshToken(username);
-    const authentication = await verifyRefreshToken(refreshToken,username);
+    const authentication = verifyRefreshToken(refreshToken,username);
     //see what i get
     if(authentication.error){
         res.send({'error' : 'error authenticating token'});
@@ -218,18 +189,6 @@ app.post('/generateToken',async (req,res)=>{
     }
     
 })
-
-//function to get all members and their online status
-async function getAllContacts(username){
-    try{
-        const contactList = await sql `SELECT username,onlinestatus FROM users WHERE username != ${username}`
-        return contactList;
-    }
-    catch(err){
-        console.error(`error getting all users `+err)
-        return {'error':'error verifying token logging out user'}
-    }
-}
 
 app.post('/uploadPicture', upload.single('image'), async (req,res)=>{
     try{
@@ -295,7 +254,7 @@ const port = '3000';
 
 server.listen(port,async ()=>{
     console.log(`listening on port ${port} :D`);
-    await allUsersOffline()
+
 })
 
 

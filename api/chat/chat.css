@@ -13,7 +13,7 @@ html, body {
     flex-direction: column;
 }
 
-#recepientContainer {
+#recipientContainer {
     background-color: #424242;
     color: white;
     display: flex;
@@ -23,7 +23,7 @@ html, body {
     width: 100%;
 }
 
-#recepientDetails {
+#recipientDetails {
     width: 25%;
     height: 100%;
     display: flex;
@@ -31,7 +31,8 @@ html, body {
     justify-content: space-between;
 }
 
-#recepientPicture {
+
+#recipientPicture {
     height: 80%;
     width: 35%;
     border-radius: 50%;
@@ -56,6 +57,8 @@ html, body {
     padding: 5px;
     word-wrap: break-word;
     text-wrap: wrap;
+    border-radius: 10%;
+    border-top-right-radius: 0;
 }
 .chatMessage::after{
     content: "";
@@ -85,7 +88,19 @@ html, body {
     border-right: 15px solid  #424242;
     left: -14px;
 }
-
+#userLeftAlert{
+    position: relative;
+    min-height: 5%;
+    width: fit-content;
+    color: white;
+    margin: 8px;
+    padding: 5px;
+    word-wrap: break-word;
+    text-wrap: wrap;
+    background-color: red;
+    align-self: center;
+    text-align: center;
+}
 
 
 

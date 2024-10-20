@@ -8,23 +8,91 @@
 </head>
 <body>
     <div id="container">
-        <div id="recepientContainer">
+        <div id="recipientContainer">
             <button id="quitButton">Quit</button>
-            <div id="recepientDetails">
-                <div id="recepientName">Name</div>
-                <img id="recepientPicture" src="" alt="">
+            <div id="recipientDetails">
+                <div id="recipientName">Name</div>
+                <img id="recipientPicture" src="" alt="">
             </div> 
         </div>
         <div id="chatContainer">
-            <div class="chatMessage youMessage"> no no no pleeeeeeaaaaseeeeeeeee pleeeeeassssseee give me cooooockiieess </div>
-            <div class="chatMessage themMessage">What? What Are you talking about?</div>
-            <div class="chatMessage youMessage"> no no no pleeeeeeaaaaseeeeeeeee pleeeeeassssseee give me cooooockiieess </div>
+            <!--  <div class="chatMessage youMessage"> no no no pleeeeeeaaaaseeeeeeeee pleeeeeassssseee give me cooooockiieess </div> -->
+            <!-- <div class="chatMessage themMessage">What? What Are you talking about?</div> -->
+            <!-- <div id="userLeftAlert">Name, has left the chat and wont recieve your messages</div> -->
 
         </div>  
         <div id="inputContainer">
             <input id="chatText" type="">
-            <button id="sendButton">Send</button>
+            <button id="sendButton" click>Send</button>
         </div>
     </div>
+
+
+    <script>
+        const {ipcRenderer} = require('electron');
+        let yourName;
+
+        ipcRenderer.on('chat-data',async (event,roomDetails)=>{
+            document.getElementById('recipientName').textContent = roomDetails.otherUser;
+            await getPictureFromServer(roomDetails.otherUser);
+            yourName = roomDetails.you;
+            function sendMessage(roomDetails){
+                const message = document.getElementById('chatText').value;
+                const messageDetails = {
+                    messageSender: roomDetails.you,
+                    messageRoom: roomDetails.roomName,
+                    messageText: message
+                }
+                ipcRenderer.send('send-message',messageDetails);
+                message.value = '';
+            }
+            document.getElementById('sendButton').addEventListener('click',() => {sendMessage(roomDetails)});
+        });
+
+        ipcRenderer.on('get-message', (event, messageDetails) => {
+            console.log('adding message: ');
+            
+            addMessage(messageDetails);
+        });
+
+        ipcRenderer.on('user-left-chat', (event, username) => {
+            otherUserLeft(username);
+        })
+
+        function otherUserLeft(otherUser){
+            const alert = document.createElement('div');
+            alert.id = 'userLeftAlert';
+            alert.textContent = `${otherUser}, has left the chat and wont recieve your messages.`;
+            document.getElementById('chatContainer');
+
+        }
+
+        function addMessage(messageDetails){
+            const container = document.getElementById('chatContainer');
+            //compare sender and your name to see the appropriate class
+            const messageClass =  messageDetails.messageSender === yourName ? 'youMessage' : 'themMessage';
+            
+            const chatMessage = document.createElement('div');
+            chatMessage.textContent = messageDetails.messageText;
+            chatMessage.classList.add("chatMessage",messageClass);
+
+            container.appendChild(chatMessage);
+        }       
+
+
+        async function getPictureFromServer(username){
+            const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
+            const data = await response.json();
+            if(data.image){
+                const imgElement = document.getElementById('recipientPicture');
+                imgElement.src = `data:${data.contentType};base64,${data.image}`
+            }
+            else if(data.status == 500){
+                alert('Sorry we could not fetch your friend`s image');
+            }
+        }
+
+
+    </script>
 </body>
 </html>

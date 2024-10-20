@@ -42,10 +42,9 @@ io.on('connection', (socket)=>{
             return console.error('Error disconnecting user: ',error)
         }
     });
-
+        
     socket.on('active-users', () => {
         console.log('active users : ', Object.keys(activeClients));
-        
         socket.emit('active-users-response', Object.keys(activeClients));
     });
 
@@ -58,6 +57,45 @@ io.on('connection', (socket)=>{
         else{
             console.log(`User ${recipientUsername} is offline`);
         }
+    })
+    socket.on('chat-accepted',(data)=>{
+        const recipientUsername = data.recipient;
+        const senderUsername = data.sender;
+        console.log(recipientUsername,' accepted ',senderUsername,' chat request');
+        const roomName = `${senderUsername}-${recipientUsername}`;
+        const recipientSocketId = activeClients[recipientUsername];
+        const senderSocketId = activeClients[senderUsername];
+        if(recipientSocketId && senderSocketId){
+            io.to(senderSocketId).emit('join-room',{roomName,'otherUser':recipientUsername, 'you':senderUsername});
+            io.to(recipientSocketId).emit('join-room', {roomName,'otherUser':senderUsername, 'you':recipientUsername});
+
+            console.log(`Room Created: ${roomName}`);
+        }
+        else{
+            try{
+                io.to(senderSocketId).emit('join-failed', recipientUsername);
+                io.to(recipientSocketId).emit('join-failed', senderUsername);
+            }
+            catch{
+                console.log('ERROR: 404 user not found');
+            }
+        }
+    socket.on('request-to-join-chat', (event,room) => {
+
+        socket.join(room);
+        // const clientsInRoom = Array.from(io.sockets.adapter.rooms.get(roomName) || []);
+        // console.log(`Clients in room ${roomName}: ${clientsInRoom}`);
+        
+
+    })
+
+    });
+    socket.on('sent-message-to-server',messageDetails => { 
+        console.log(messageDetails);
+        io.to(messageDetails.messageRoom).emit('get-message',messageDetails);
+    })
+    socket.on('user-left-chat', username => {
+         
     })
 });
 

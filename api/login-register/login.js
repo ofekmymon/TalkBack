@@ -57,6 +57,7 @@ async function login(){
     const response = await findUser(user);
     if(!response){
         //LOG IN = ENTER THE CONTACTS LIST AND GENERATE JWT TOKEN FROM SERVER 
+        ipcRenderer.send('log-in', username);
         saveLastUser(username)
         await generateTempToken(username);
         goToContacts();

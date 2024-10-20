@@ -47,7 +47,6 @@
             parsedRequests.forEach((request,i) => {
 
                 
-
                 const requestContainer = document.createElement('div');
                 requestContainer.classList.add('request');
 
@@ -60,14 +59,18 @@
                 
                 const acceptBtn = document.createElement('button');
                 acceptBtn.textContent = 'Accept';
-                acceptBtn.id = `${request.sender}-accept`;
-                
+                acceptBtn.id = `${request.sender}-${request.activityType}`;
+                acceptBtn.addEventListener('click',(e)=>{
+                    deleteRequest(parsedRequests,request.sender,request.activityType); 
+                    ipcRenderer.send('accept-request',e.target.id);
+                })
+
                 const rejectBtn = document.createElement('button');
                 rejectBtn.textContent = 'Reject';
                 rejectBtn.id = `${request.sender}-${request.activityType}`;
                 rejectBtn.addEventListener('click',(e)=>{
                     deleteRequest(parsedRequests,request.sender,request.activityType);
-                    ipcRenderer.send('reject-message', e.target.id)
+                    ipcRenderer.send('reject-request', e.target.id);
                 });
                 
                 buttonContainer.appendChild(acceptBtn);
@@ -91,14 +94,10 @@
 
         });
         function deleteRequest(list,sender,activity){
-            const updatedList = list.filter((item)=>{return item.sender !== sender && item.activityType !== activity});
+            const updatedList = list.filter((item)=>{ return !( item.sender === sender && item.activityType === activity)});
             console.log(updatedList);
             createRequests(JSON.stringify(updatedList))
         }
-        // document.getElementById('accept').addEventListener('click',()=>{
-        //     ipcRenderer.send('chat-request-response', 'accept');
-        // })
-
 
     </script>
 </body>

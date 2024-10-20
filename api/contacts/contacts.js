@@ -1,4 +1,4 @@
-const {ipcRenderer, session} = require('electron');
+const {ipcRenderer} = require('electron');
 const {io} = require('socket.io-client');
 const socket = io('http://localhost:3000');
 
@@ -9,7 +9,7 @@ class Request {
         this.activityType = activityType,
         this.sender = sender
         this.recipient = recipient
-    }
+    };
 };
 
 
@@ -86,9 +86,21 @@ function removeDuplicates(list){
     
     return uniqueArray;
 };
-ipcRenderer.on('delete-message',(event,messageId) => {
+ipcRenderer.on('rejected-chat-request',(event,messageId) => {
     deleteRequest(messageId);
+});
+
+ipcRenderer.on('accepted-chat-request',(event,messageId) => {
+    deleteRequest(messageId);
+});
+ipcRenderer.on('ask-username', () => {
+    ipcRenderer.send('get-username',askUsername());
 })
+
+// ipcRenderer.on('user-left-chat',(event, username) => {
+//     socket.emit('user-left-chat', username)
+// });
+
 function deleteAllChildren(container){
     while(container.firstChild){
         container.removeChild(container.firstChild);
@@ -139,18 +151,19 @@ function searchbar(list) {
 }
 
 document.getElementById('searchBar').addEventListener('input',()=>{
-    socket.emit('active-users');
-    socket.once('active-users-response', (activeClients) => {
+    ipcRenderer.send('get-active-users');
+    ipcRenderer.on('active-users',(event, activeClients) => {
         const filteredUsers = searchbar(activeClients);
         console.log('filtered users ',filteredUsers);
         createContactList(askUsername(), filteredUsers);
-    });
+    })
+
 });
 
 document.getElementById('refresh').addEventListener('click',()=>{
-    socket.emit('active-users');
-    socket.once('active-users-response',(activeClients) =>{
-        createContactList(askUsername(),activeClients);
+    ipcRenderer.send('get-active-users');
+    ipcRenderer.on('active-users',(event, activeClients) => {
+        createContactList(askUsername(), activeClients);
     })
 
 });
@@ -169,12 +182,10 @@ async function getPictureFromServer(username,method){
             const imgElement = document.getElementById(`img-${username}`);
             imgElement.src = `data:${data.contentType};base64,${data.image}`
         }
-        
     }
     else if(data.status == 500){
         alert('Sorry we could not fetch your image')
     }
-
 }
 document.getElementById('requestsMenu').addEventListener('click',()=>{
     document.getElementById('requestsMenuNotifier').classList.remove('new');
@@ -287,7 +298,8 @@ function createContactList(username,userList){
 }
 function sendRequest(username,activity,recipient){
     const request = new Request(username,activity,recipient);
-    socket.emit('send-chat-request',request);
+    ipcRenderer.send('send-chat-request', request)
+    
 }
 
 
@@ -296,21 +308,19 @@ function sendRequest(username,activity,recipient){
     try{
         const username = await getUsernameFromServer(token);
         document.getElementById('profileName').textContent = username;
-        socket.on('connect', ()=>{
-            console.log('Connected to server with socket ID: ', socket.id);
-            //send username to server to add it to active list
-            socket.emit('log-user', username);
-        })
         storeUsername(username);
         await getPictureFromServer(username,'profile');
-        socket.on('active-users-update',(activeClients)=>{
+        ipcRenderer.on('active-users-update', (event ,activeClients) => {
             console.log('active clients are: ', activeClients);
             createContactList(username,activeClients);
         });
-        socket.on('listen-for-chat-requests',(request)=>{
+        ipcRenderer.on('listen-for-chat-requests', (event, request) => {
             document.getElementById('requestsMenuNotifier').classList.add('new');
-            storeRequests(request);
+            storeRequests(request);        
         })
+           
+
+        
     }   
     catch(err){
         console.log('error : ',err);

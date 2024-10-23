@@ -80,19 +80,20 @@ io.on('connection', (socket)=>{
                 console.log('ERROR: 404 user not found');
             }
         }
-    socket.on('request-to-join-chat', (event,room) => {
-
-        socket.join(room);
-        // const clientsInRoom = Array.from(io.sockets.adapter.rooms.get(roomName) || []);
-        // console.log(`Clients in room ${roomName}: ${clientsInRoom}`);
-        
-
-    })
-
     });
+
+    socket.on('request-to-join-chat', room => {
+        console.log('join da room');
+        
+        socket.join(room);
+        const clientsInRoom = Array.from(io.sockets.adapter.rooms.get(room) || []);
+        console.log(`Clients in room ${room}: ${clientsInRoom}`);
+    });
+
     socket.on('sent-message-to-server',messageDetails => { 
         console.log(messageDetails);
-        io.to(messageDetails.messageRoom).emit('get-message',messageDetails);
+        // io.to(messageDetails.messageRoom).emit('get-message', messageDetails);
+        io.emit('get-message', messageDetails);
     })
     socket.on('user-left-chat', username => {
          

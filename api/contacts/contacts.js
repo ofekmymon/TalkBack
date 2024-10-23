@@ -1,6 +1,5 @@
 const {ipcRenderer} = require('electron');
 const {io} = require('socket.io-client');
-const socket = io('http://localhost:3000');
 
 
 
@@ -310,6 +309,10 @@ function sendRequest(username,activity,recipient){
         document.getElementById('profileName').textContent = username;
         storeUsername(username);
         await getPictureFromServer(username,'profile');
+        ipcRenderer.send('get-active-users');
+        ipcRenderer.on('active-users',(event, activeClients) => {
+            createContactList(askUsername(), activeClients);
+        })
         ipcRenderer.on('active-users-update', (event ,activeClients) => {
             console.log('active clients are: ', activeClients);
             createContactList(username,activeClients);

@@ -257,17 +257,19 @@ socket.on('connect', ()=> {
     socket.on('join-failed',otherUser => {
         createErrorWindow(`Error: ${otherUser} failed to join room `)
     });
-    socket.on('get-messages', message => {
+    
+    socket.on('get-message', messageDetails => {
+        console.log('sending message: ');
         try{
-            const chatRoom = findChatRoom(message.messageRoom); 
-            console.log('sending message: ');
+            const chatRoom = findChatRoom(messageDetails.messageRoom); 
+            console.log(chatRoom);
                     
-            chatRoom.webContents.send('get-message',message);
+            chatRoom.webContents.send('get-message',messageDetails);
         }
         catch(error){
             console.log('Error getting message from server:' + error);
         }
-    })
+    });
 
     
 })

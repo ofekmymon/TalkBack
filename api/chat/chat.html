@@ -44,7 +44,7 @@
                     messageText: message
                 }
                 ipcRenderer.send('send-message',messageDetails);
-                message.value = '';
+                document.getElementById('chatText').value = '';
             }
             document.getElementById('sendButton').addEventListener('click',() => {sendMessage(roomDetails)});
         });

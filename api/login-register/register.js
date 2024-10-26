@@ -89,4 +89,9 @@ async function registerUser() {
 }
 
 document.getElementById('registerButton').addEventListener('click',registerUser);
+window.addEventListener('keydown',(e) => {
+    if(e.key === 'Enter'){
+        registerUser();
+    }
+});
 document.getElementById('regSwitchLog').addEventListener('click',switchToLogin);

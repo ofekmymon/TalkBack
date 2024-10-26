@@ -58,19 +58,23 @@ const createRegisterWindow = () => {
 
 const createErrorWindow = (errorMessage) => {
     const ErrorMessageWindow = new BrowserWindow({
-        width:300,
-        height:200,
-        modal:true,
-        parent:ContactWindow, // maybe make it interchangable
+        width: 300,
+        height: 200,
+        modal: true,
+        parent: ContactWindow,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
         }
-    })
-    ErrorMessageWindow.webContents.send('did-finish-load', () => {
-        ErrorMessageWindow.send('error-message', errorMessage);
     });
-}
+
+    ErrorMessageWindow.loadFile('./api/errorWindow/error.html');
+    
+    ErrorMessageWindow.webContents.once('did-finish-load', () => {
+        console.log(errorMessage);
+        ErrorMessageWindow.webContents.send('error-message', errorMessage);
+    });
+};
 
 const createChatRequestsWindow = (requests) => {
     ChatRequestWindow = new BrowserWindow({
@@ -114,18 +118,20 @@ const createChatWindow = (roomDetails) => {
 
     // Handle when the window is closed
     ChatWindow.on('closed', () => {
-        delete chatWindows[roomDetails.roomName]; 
-        if(ContactWindow){
-            ContactWindow.webContents.send('user-left-chat', roomDetails.you);
-        }
+        console.log(' You left the chat ');
+        chatWindows.every(chat => {
+            if(chat.roomName){
+                socket.emit('user-left-chat',{'room' : roomDetails.roomName , 'userLeft' : roomDetails.you});
+                return false;
+            }
+            return true;
+        });
     });
 }
 //development line
 app.setPath('userData', path.join(app.getPath('userData'), 'client_' + Math.random()));
 
-app.on('ready', () => {
-    createRegisterWindow();
-});
+
 
 
 ///////Window Management///////////////
@@ -177,8 +183,13 @@ ipcMain.on('open-chat-requests-menu',(event, requests) => {
     createChatRequestsWindow(requests);
 })
 ipcMain.on('send-chat-request', (event, request) => {
-    // should check if user is already in a chat with recipient 
-    socket.emit('send-chat-request', request);
+    const roomName = `${request.sender}-${request.recipient}`
+    if(findExistingChat(roomName)){
+        createErrorWindow('A chat with this user already exists');
+    }
+    else{
+        socket.emit('send-chat-request', request);
+    }
 }) 
 //send requests to contact to delete them from the storage
 ipcMain.on('reject-request',(event, messageId)=>{
@@ -187,27 +198,25 @@ ipcMain.on('reject-request',(event, messageId)=>{
 
 });
 ipcMain.on('accept-request', async (event, messageId)=>{
-    ContactWindow.webContents.send('accepted-chat-request',messageId);
-    console.log('accepted message');
-    const message = messageId.split('-');
-    const senderName = message[0];
-    const recipientName = await getUsername();
-    socket.emit('chat-accepted',{ sender:senderName , recipient: recipientName});
+    if(findExistingChat(messageId)){
+        createErrorWindow('A chat with this user already exists');
+    }
+    else{
+        ContactWindow.webContents.send('accepted-chat-request',messageId);
+        console.log('accepted message');
+        const message = messageId.split('-');
+        const senderName = message[0];
+        const recipientName = await getUsername();
+        socket.emit('chat-accepted',{ sender:senderName , recipient: recipientName});
+    }
+    
 })
-// ipcMain.on('create-chat',(event, roomDetails) => {
-//     console.log(roomDetails);
-//     createChatWindow(roomDetails);
-// })
+
 ipcMain.on('send-message',(event, messageDetails) => {
     console.log(messageDetails);
     socket.emit('sent-message-to-server', messageDetails);
 
 })
-function findChatRoom(roomName){
-    console.log('roomName ', roomName);
-    const obj =  chatWindows.find(room => room.roomName === roomName);
-    return obj.chatRoom;
-}
 
 
 ///////////////Token management////////////////
@@ -233,6 +242,37 @@ function getUsername() {
     });
 }
 
+function findChatRoom(roomName){
+    try{
+        const obj =  chatWindows.find(room => room.roomName === roomName);
+        return obj.chatRoom;
+    }
+    catch{
+        return null
+    }
+    
+}
+
+function findExistingChat(roomName){
+    const temp = roomName.split('-');
+    const roomNameInverted = `${temp[1]}-${temp[0]}`;
+    console.log(roomNameInverted);
+    return findChatRoom(roomName) || findChatRoom(roomNameInverted) ? true : false;
+}
+
+function deleteChat(roomName){
+    console.log('room name is ', roomName);
+    console.log('this is before: ');
+    console.log(chatWindows);
+    
+    const index = chatWindows.findIndex(chat => chat.roomName === roomName);
+    console.log('index = ',index);
+    
+    chatWindows.splice(index, 1);
+    console.log('this is after');
+    console.log(chatWindows);
+}
+
 socket.on('connect', ()=> {
     console.log('Connected to server with socket ID: ', socket.id);
     socket.on('active-users-update', activeClients => {
@@ -255,21 +295,40 @@ socket.on('connect', ()=> {
     });  
     
     socket.on('join-failed',otherUser => {
-        createErrorWindow(`Error: ${otherUser} failed to join room `)
+        createErrorWindow(`Error: ${otherUser} failed to join room `);
     });
     
     socket.on('get-message', messageDetails => {
         console.log('sending message: ');
         try{
             const chatRoom = findChatRoom(messageDetails.messageRoom); 
-            console.log(chatRoom);
-                    
             chatRoom.webContents.send('get-message',messageDetails);
         }
         catch(error){
             console.log('Error getting message from server:' + error);
         }
     });
+    socket.on('user-left', details => {
+        try{
+            const chatRoom = findChatRoom(details.room);
+            if(chatRoom){
+                chatRoom.webContents.send('user-left',details);
+                deleteChat(details.room)
+                
+            }
+        }
+        catch(error){
+            console.log('user left');
+        }  
+
+    })
 
     
-})
+});
+
+
+
+
+app.on('ready', () => { 
+    createRegisterWindow();
+});

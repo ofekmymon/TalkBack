@@ -1,3 +1,4 @@
+const { json } = require('body-parser');
 const {ipcRenderer} = require('electron');
 const {io} = require('socket.io-client');
 
@@ -30,6 +31,9 @@ function storeToken (token){
 function storeUsername (username){
     sessionStorage.setItem('username', username);
 }
+function storeUsers(activeUsers){
+    sessionStorage.setItem('users', JSON.stringify(activeUsers));
+}
 function storeRequests(request) {
     let requests = askRequests() || [];
     if (!Array.isArray(requests)) {
@@ -57,6 +61,10 @@ function askToken(){
 function askRequests(){
     const requests = sessionStorage.getItem('requests') || [];
     return requests;
+}
+function askUsers(){
+    const users = sessionStorage.getItem('users') || [];
+    return JSON.parse(users);
 }
 
 
@@ -143,20 +151,31 @@ function convertBoolToStatus(bool){
     }
     return 'Offline'
 }
-
 function searchbar(list) {
-    const filter = document.getElementById('searchBar').value.toLowerCase(); 
-    return list.filter(item => item.toLowerCase().includes(filter)); 
+    const searchBar = document.getElementById('searchBar');
+    if (!searchBar) {
+        console.warn('Search bar element not found');
+        return [];
+    }
+
+    const filter = searchBar.value.trim().toLowerCase();
+    
+    if (filter.length === 0) {
+        return list; 
+    }
+
+    const filteredList = list.filter(item => item.toLowerCase().includes(filter));
+    return filteredList;
+    
 }
 
 document.getElementById('searchBar').addEventListener('input',()=>{
-    ipcRenderer.send('get-active-users');
-    ipcRenderer.on('active-users',(event, activeClients) => {
-        const filteredUsers = searchbar(activeClients);
-        console.log('filtered users ',filteredUsers);
-        createContactList(askUsername(), filteredUsers);
-    })
-
+    const list = askUsers()
+    console.log(list);
+    
+    const filteredUsers = searchbar(list);
+    console.log('filtered users ',filteredUsers);
+    createContactList(askUsername(), filteredUsers);
 });
 
 document.getElementById('refresh').addEventListener('click',()=>{
@@ -238,7 +257,13 @@ function createContactList(username,userList){
         console.log('sending create contact list userlist : ', userList);
         
         //remove own username from list
-        let allClients = userList.toSpliced(userList.indexOf(username),1); 
+        let allClients;
+        if(userList.indexOf(username) >= 0){
+            allClients = userList.toSpliced(userList.indexOf(username),1); 
+        }
+        else{
+            allClients = userList;
+        }
         const container = document.getElementById('contacts');
         deleteAllChildren(container);
 
@@ -311,11 +336,14 @@ function sendRequest(username,activity,recipient){
         await getPictureFromServer(username,'profile');
         ipcRenderer.send('get-active-users');
         ipcRenderer.on('active-users',(event, activeClients) => {
+            storeUsers(activeClients);
             createContactList(askUsername(), activeClients);
         })
         ipcRenderer.on('active-users-update', (event ,activeClients) => {
             console.log('active clients are: ', activeClients);
+            storeUsers(activeClients);
             createContactList(username,activeClients);
+            
         });
         ipcRenderer.on('listen-for-chat-requests', (event, request) => {
             document.getElementById('requestsMenuNotifier').classList.add('new');

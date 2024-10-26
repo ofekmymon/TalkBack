@@ -88,6 +88,11 @@ async function findUser(user){
 
 getLastUser();
 document.getElementById('loginButton').addEventListener('click',login);
+window.addEventListener('keydown',(e)=>{
+    if(e.key === 'Enter'){
+        login();
+    }
+})
 document.getElementById('logSwitchReg').addEventListener('click',switchToRegister);
 
 

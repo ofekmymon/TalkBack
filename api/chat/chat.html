@@ -9,15 +9,14 @@
 <body>
     <div id="container">
         <div id="recipientContainer">
-            <button id="quitButton">Quit</button>
             <div id="recipientDetails">
                 <div id="recipientName">Name</div>
                 <img id="recipientPicture" src="" alt="">
             </div> 
         </div>
         <div id="chatContainer">
-            <!--  <div class="chatMessage youMessage"> no no no pleeeeeeaaaaseeeeeeeee pleeeeeassssseee give me cooooockiieess </div> -->
-            <!-- <div class="chatMessage themMessage">What? What Are you talking about?</div> -->
+            <!--  <div class="chatMessage youMessage"></div> -->
+            <!-- <div class="chatMessage themMessage"></div> -->
             <!-- <div id="userLeftAlert">Name, has left the chat and wont recieve your messages</div> -->
 
         </div>  
@@ -38,15 +37,23 @@
             yourName = roomDetails.you;
             function sendMessage(roomDetails){
                 const message = document.getElementById('chatText').value;
-                const messageDetails = {
-                    messageSender: roomDetails.you,
-                    messageRoom: roomDetails.roomName,
-                    messageText: message
+                if(message.length > 0){
+                    const messageDetails = {
+                        messageSender: roomDetails.you,
+                        messageRoom: roomDetails.roomName,
+                        messageText: message
+                    }
+                    ipcRenderer.send('send-message',messageDetails);
+                    document.getElementById('chatText').value = '';
                 }
-                ipcRenderer.send('send-message',messageDetails);
-                document.getElementById('chatText').value = '';
             }
             document.getElementById('sendButton').addEventListener('click',() => {sendMessage(roomDetails)});
+
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter'){
+                    sendMessage(roomDetails);
+                }
+            })
         });
 
         ipcRenderer.on('get-message', (event, messageDetails) => {
@@ -55,15 +62,15 @@
             addMessage(messageDetails);
         });
 
-        ipcRenderer.on('user-left-chat', (event, username) => {
-            otherUserLeft(username);
+        ipcRenderer.on('user-left', (event, details) => {
+            otherUserLeft(details.userLeft);
         })
 
         function otherUserLeft(otherUser){
             const alert = document.createElement('div');
             alert.id = 'userLeftAlert';
             alert.textContent = `${otherUser}, has left the chat and wont recieve your messages.`;
-            document.getElementById('chatContainer');
+            document.getElementById('chatContainer').appendChild(alert);
 
         }
 

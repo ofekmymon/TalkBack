@@ -92,12 +92,15 @@ io.on('connection', (socket)=>{
 
     socket.on('sent-message-to-server',messageDetails => { 
         console.log(messageDetails);
-        // io.to(messageDetails.messageRoom).emit('get-message', messageDetails);
-        io.emit('get-message', messageDetails);
+        io.to(messageDetails.messageRoom).emit('get-message', messageDetails);
+        // io.emit('get-message', messageDetails);
     })
-    socket.on('user-left-chat', username => {
-         
-    })
+    socket.on('user-left-chat', details => {
+        console.log(`${details.userLeft} has left the chat`);
+        socket.leave(details.room)
+        io.to(details.room).emit('user-left', details);
+    });
+    
 });
 
 

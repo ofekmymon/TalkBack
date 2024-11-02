@@ -9,7 +9,9 @@
 </head>
 <body>
     <div id="container">
-        <div id="title">Requests</div>
+        <div id="title">Requests
+            <button id="refresh">Refresh</button>
+        </div>
         <div id="requestsContainer">
             
         </div>
@@ -98,6 +100,11 @@
             console.log(updatedList);
             createRequests(JSON.stringify(updatedList))
         }
+
+        function refresh(){
+            ipcRenderer.send('refresh-requests');
+        }
+        document.getElementById('refresh').addEventListener('click', refresh);
 
     </script>
 </body>

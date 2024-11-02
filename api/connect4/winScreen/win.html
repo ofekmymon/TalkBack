@@ -56,8 +56,8 @@
                 status = 'loser';
             }
 
-            function quit(username){
-                window.close();
+            function quit(data){
+                ipcRenderer.send('quit-game',data)
             }
             document.getElementById('quit').addEventListener('click', () => {quit({quitter : data.you, room : data.room})});
 

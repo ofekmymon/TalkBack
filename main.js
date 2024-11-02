@@ -26,7 +26,7 @@ const createContactWindow = () => {
             contextIsolation: false,
         }
     });
-    ContactWindow.removeMenu();
+    // ContactWindow.removeMenu();
     ContactWindow.loadFile('./api/contacts/contacts.html');
 };
 
@@ -41,7 +41,7 @@ const createLoginWindow = () => {
         }
         
     });
-    loginWindow.removeMenu();
+    // loginWindow.removeMenu();
     loginWindow.loadFile('./api/login-register/login.html');
 };
 
@@ -55,7 +55,7 @@ const createRegisterWindow = () => {
             contextIsolation: false,
         }
     });
-    registerWindow.removeMenu();
+    // registerWindow.removeMenu();
     registerWindow.loadFile('./api/login-register/register.html');
 };
 
@@ -90,7 +90,7 @@ const createRequestsWindow = (requests) => {
         }
     });
     RequestsWindow.loadFile('./api/requests/requests.html');
-    RequestsWindow.removeMenu();
+    // RequestsWindow.removeMenu();
     //sends the client the activity requests
     RequestsWindow.webContents.once('did-finish-load', () => {
         RequestsWindow.send('requests',requests);
@@ -126,6 +126,7 @@ const createChatWindow = (roomDetails) => {
         chatWindows.every(chat => {
             if(chat.roomName){
                 socket.emit('user-left-chat',{'room' : roomDetails.roomName , 'userLeft' : roomDetails.you});
+                deleteChat(roomDetails.roomName);
                 return false;
             }
             return true;
@@ -185,9 +186,6 @@ const createWinWindow = (data) => {
         WinWindow.send('get-data', data);
     })
 
-    WinWindow.on('close', () => {
-        socket.emit('user-quit', {room : data.room, userLeft : data.you})
-    })
 }
 
 
@@ -245,12 +243,26 @@ ipcMain.on('get-active-users',() => {
 ipcMain.on('open-requests-menu',(event, requests) => {
     createRequestsWindow(requests);
 })
+ipcMain.on('refresh-requests', (event) => {
+    if (ContactWindow && !ContactWindow.isDestroyed()) {
+        ContactWindow.webContents.send('get-requests-data');
+    }
+
+    ipcMain.once('requests-data-response', (event, requestData) => {
+        if (RequestsWindow) {
+            RequestsWindow.close();
+        }
+        createRequestsWindow(requestData);
+    });
+});
 ipcMain.on('send-request', (event, request) => {
     const roomName = `${request.sender}-${request.recipient}`
-    if(request.activity === 'chat' && findExistingChat(roomName)){
+    console.log(request.activityType);
+    
+    if(request.activityType === 'chat' && findExistingChat(roomName)){
         createErrorWindow('A chat with this user already exists');
     }
-    if(request.activity && Connect4Window){
+    if(request.activityType === 'game' && Connect4Window){
         createErrorWindow('You can only play one game');
     }
     else{
@@ -259,7 +271,13 @@ ipcMain.on('send-request', (event, request) => {
 }) 
 //send requests to contact to delete them from the storage
 ipcMain.on('reject-request',(event, messageId)=>{
-    ContactWindow.webContents.send('rejected-request', messageId);
+    try{
+        ContactWindow.webContents.send('rejected-request', messageId);
+    }
+    catch{
+        console.log('user left');
+        
+    }
     console.log('rejected request');
 
 });
@@ -269,7 +287,7 @@ ipcMain.on('accept-request', async (event, messageId)=>{
     }
     
     else{
-        if(messageId.split('-')[2] === 'game' && Connect4Window){
+        if(messageId.split('-')[1] === 'game' && Connect4Window){
             createErrorWindow('You already have an open game');
         }
         else{
@@ -305,6 +323,9 @@ ipcMain.on('rematch', (event) => {
         createErrorWindow('Could not create a new game after leaving');
     }
 });
+ipcMain.on('quit-game', (event,data) => {
+    socket.emit('user-quit', {room : data.room, userLeft : data.you})
+})
 
 ///////////////Token management////////////////
 ipcMain.on('set-first-token',(event ,userToken) =>{
@@ -342,6 +363,8 @@ async function sendRequestToServer(messageId){
 function findChatRoom(roomName){
     try{
         const obj =  chatWindows.find(room => room.roomName === roomName);
+        console.log(obj);
+        
         return obj.chatRoom;
     }
     catch{
@@ -353,6 +376,7 @@ function findChatRoom(roomName){
 function findExistingChat(roomName){
     const temp = roomName.split('-');
     const roomNameInverted = `${temp[1]}-${temp[0]}`;
+    console.log(roomName);
     console.log(roomNameInverted);
     return findChatRoom(roomName) || findChatRoom(roomNameInverted) ? true : false;
 }
@@ -404,6 +428,9 @@ socket.on('connect', ()=> {
     });
     socket.on('user-left-chat', details => {
         try{
+            console.log('line 430:');
+            console.log(details);
+            socket.emit('leave-chat-room',details.room);
             const chatRoom = findChatRoom(details.room);
             if(chatRoom){
                 chatRoom.webContents.send('user-left',details);
@@ -419,6 +446,9 @@ socket.on('connect', ()=> {
         if(Connect4Window){
             Connect4Window.webContents.send('turn-changed',data);
         }
+        else{
+            createErrorWindow('Opponent has left the game')
+        }
     });
     socket.on('rematch-requested', sender => {
         console.log('rematch request from server.');
@@ -433,16 +463,26 @@ socket.on('connect', ()=> {
 
         if(!(getUsername() === userLeft)){
             createErrorWindow('Your opponent has left the game');
-            Connect4Window.webContents.send('user-left');
+            try{
+                Connect4Window.webContents.send('user-left');
+            }
+            catch(error){
+                console.log(`Error: ${error}`);
+            }
         }
     });
     socket.on('user-quit-game-room', userLeft => {
         if(!(getUsername() === userLeft)){
-            WinWindow.webContents.send('user-quit');
+            try{
+                WinWindow.webContents.send('user-quit');
+                
+            }
+            catch{
+                console.log('The rematch is accepted');
+                
+            }
         }
     })
-
-    
 });
 
 

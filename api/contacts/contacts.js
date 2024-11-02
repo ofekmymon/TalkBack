@@ -103,10 +103,9 @@ ipcRenderer.on('accepted-request',(event,messageId) => {
 ipcRenderer.on('ask-username', () => {
     ipcRenderer.send('get-username',askUsername());
 })
-
-// ipcRenderer.on('user-left-chat',(event, username) => {
-//     socket.emit('user-left-chat', username)
-// });
+ipcRenderer.on('get-requests-data', () => { 
+    ipcRenderer.send('requests-data-response',askRequests());
+})
 
 function deleteAllChildren(container){
     while(container.firstChild){
@@ -299,12 +298,14 @@ function createContactList(username,userList){
             gameButton.id = item;
             gameButton.textContent = 'Play Game'
             gameButton.classList.add('gameButton');
+            gameButton.classList.add('btn');
             gameButton.addEventListener('click',()=>{sendRequest(askUsername(),'game',item)});
 
             const chatButton = document.createElement('button');
             chatButton.id = item;
             chatButton.textContent = 'Chat';
             chatButton.classList.add('chatButton');
+            chatButton.classList.add('btn');
             chatButton.addEventListener('click',()=>{sendRequest(askUsername(),'chat',item)});
 
             contactDetails.appendChild(gameButton);

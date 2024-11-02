@@ -1,5 +1,5 @@
 html,body{
-    background-color:skyblue;
+    background-color:#2c4252;
     font-family: Arial, Helvetica, sans-serif;
     height: 100%;
 }
@@ -63,6 +63,7 @@ html,body{
     height: 25%;
     background-color: lightblue;
     border-radius: 50%;
+    border: 1px solid black;
 }
 #nameContainer{
     width: 50%;
@@ -94,6 +95,17 @@ html,body{
     background-color: white;
     width: 99.9%;
     height:5%;
+}
+.btn{
+    width: 100px;
+    height: 30px;
+    background-color: #2c4252;
+    color: #e3c77a;
+    transition: 0.2s all ease;
+}
+.btn:hover{
+    background-color: #21303b;
+    color: #bca565;
 }
 .sortingButton{
     height: 100%;

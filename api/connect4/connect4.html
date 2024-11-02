@@ -12,7 +12,7 @@
 
         <div id="details">
             <div id="you" class="userDetails">
-                <div id="youTimer" class="timer">120s</div>
+                <div id="youTimer" class="timer"></div>
                 <div id="youTurnBulb" class="turnbulb"></div>
                 <div id="youName" class="name"></div>
                 <img id="youPicture" class="profilePicture" >
@@ -25,7 +25,7 @@
                 <img id="opponentPicture"  class="profilePicture" >
                 <div id="opponentName" class="name"></div>
                 <div id="opponentTurnBulb" class="turnbulb"></div>
-                <div id="opponentTimer" class="timer">120s</div>
+                <div id="opponentTimer" class="timer"></div>
             </div>
         </div>
         <div id="grid">
@@ -312,22 +312,30 @@
             //column
             if(checkColumn(column,cell,color) || checkRow(column,cell,color,x,y) || 
             checkDiagonal(column,cell,color,x,y,'positive') ||  checkDiagonal(column,cell,color,x,y,'negative')){
-                document.getElementById('grid').classList.remove('youTurn');
-                addScorePoint(potentialWinner);
-                console.log(potentialWinner);
-                console.log(potentialLoser);
-                
-                ipcRenderer.send('win-game', {
-                    winner : sessionStorage.getItem(potentialWinner),
-                    winnerScore: sessionStorage.getItem(`${potentialWinner}Score`),
-                    loser : sessionStorage.getItem(potentialLoser),
-                    loserScore : sessionStorage.getItem(`${potentialLoser}Score`),
-                    you : sessionStorage.getItem('you'),
-                    room : sessionStorage.getItem('room')
-                })
+                addScorePoint(potentialWinner);                
+                win(potentialWinner,potentialLoser);
 
             }
                    
+        }
+
+        let timerInterval; 
+        function startTimer(timerDisplay,winner,loser) {
+            let seconds = 60;
+
+            clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timerDisplay.textContent = `${seconds}s`;
+                seconds--;
+
+                if (seconds < 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = '0s';
+                    win(winner,loser)
+                   
+                }
+            }, 1000);
         }
 
         function createBoard(color){
@@ -341,6 +349,7 @@
             }
             else{
                 document.getElementById('opponentTurnBulb').classList.add('active');
+
             }
             for(let i=0; i<7;i++){
                 const column = document.createElement('div');
@@ -357,7 +366,9 @@
                 }
                 
                 board.appendChild(column);
-            }[]
+            }
+            document.getElementById('youTimer').textContent = 60+'s';
+            document.getElementById('opponentTimer').textContent = 60+'s';
 
         }
 
@@ -374,27 +385,54 @@
             return cell;
         }
 
-        ipcRenderer.on('turn-changed',(event, data) => {
-            // check who made the turn
-            
-            document.getElementById('grid').classList.toggle('youTurn');
+
+        function win(winner,loser){
+            document.getElementById('grid').classList.remove('youTurn');
+            addScorePoint(winner);
+            ipcRenderer.send('win-game', {
+                winner : sessionStorage.getItem(winner),
+                winnerScore: sessionStorage.getItem(`${winner}Score`),
+                loser : sessionStorage.getItem(loser),
+                loserScore : sessionStorage.getItem(`${loser}Score`),
+                you : sessionStorage.getItem('you'),
+                room : sessionStorage.getItem('room')
+            })
+        }
+
+        function switchTurn(isYourTurn) {
+            const board = document.getElementById('grid');
+            board.classList.toggle('youTurn');
             document.getElementById('youTurnBulb').classList.toggle('active');
             document.getElementById('opponentTurnBulb').classList.toggle('active');
-            const cellId = data.cellId
-            const cell = findCell(cellId);
-            const columnIndex = parseInt((cellId).split('-')[0]) - 1;
+
+            if (isYourTurn) {
+                startTimer(document.getElementById('youTimer'),'opponent','you');
+                document.getElementById('opponentTimer').textContent = 60+'s';
+
+            } else {
+                startTimer(document.getElementById('opponentTimer'),'you','opponent');
+                document.getElementById('youTimer').textContent = 60+'s';
+
+            }
+        }
+
+        ipcRenderer.on('turn-changed', (event, data) => {
+            const cellId = data.cellId;
             const color = data.color;
+            const cell = findCell(cellId);
+            const columnIndex = parseInt(cellId.split('-')[0]) - 1;
+
             cell.classList.add(color);
-            if(document.getElementById('grid').classList.contains('youTurn')){
-                // because grid was toggled, if active means the opponent won
-                checkWin(columnIndex,cell,color,'opponent','you');
 
+            const isYourTurn = document.getElementById('grid').classList.contains('youTurn');
+            if (isYourTurn) {
+                checkWin(columnIndex, cell, color, 'opponent', 'you');
+            } else {
+                checkWin(columnIndex, cell, color, 'you', 'opponent');
             }
-            else{
-                checkWin(columnIndex,cell,color,'you','opponent');
 
-            }
-        })
+            switchTurn(!isYourTurn);
+        });
 
         ipcRenderer.on('rematch', (event) => {
             if(sessionStorage.getItem('color') === 'blue'){

@@ -1,7 +1,10 @@
 html,body{
     margin: 0;
     height: 100%;
-    background-color: skyblue;
+    background-color: #21313d;
+    color: white;
+    text-shadow: 1px 1px black;
+
 }
 #container{
     width: 100%;
@@ -9,12 +12,13 @@ html,body{
     font-family: Arial, Helvetica, sans-serif;
     display: flex;
     flex-direction: column;
-    background-color: white;
+    background-color: #162129;
 }
 #title{
+    position: relative;
     height: 5%;
     width: 100%;
-    background-color:skyblue;
+    background-color: #21313d;
     text-align: center;
     border-bottom: 1px solid black;
 }
@@ -34,6 +38,7 @@ html,body{
     align-items: center;
     justify-content: space-between;
     height: 20%;
+    background-color:#21313d;
 
 }
 .buttonContainer{
@@ -42,4 +47,26 @@ html,body{
     flex-direction: column;
     justify-content: space-evenly;
 }
+.buttonContainer > button{
+    background-color: #f7d774;
+    transition: all, 0.2s ease;
+    
+    
+}
+.buttonContainer> button:hover{
+    background-color: #b39b51
+}
 
+#refresh{
+    position: absolute;
+    width: 80px;
+    height: 21px;
+    left: 0;
+    background-color: #f7d774;
+    color: black;
+    padding: 1px;
+    transition: 0.1s all ease;
+}
+#refresh:hover{
+    background-color: #b39b51;
+}

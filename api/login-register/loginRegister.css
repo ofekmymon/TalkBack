@@ -1,5 +1,7 @@
 body{
-    background-color:skyblue;
+    background-color:#21313d;
+    text-shadow: 1px 1px black;
+    color: #c8d1da;
 }
 #container{
     width: 100%;
@@ -9,6 +11,7 @@ body{
 }
 h1{
    text-align: center;
+   color: white;
 }
 .inputContainer{
     display: flex;
@@ -16,6 +19,16 @@ h1{
     align-items: center;
     margin: 5%;
 }
+input{
+    background-color:#c8d1da;
+}
 #loginButton,#registerButton{
     margin: 5%;
+}
+button{
+    background-color: #f7d774;
+    transition: all, 0.2s ease;
+}
+button:hover{
+    background-color: #b39b51
 }

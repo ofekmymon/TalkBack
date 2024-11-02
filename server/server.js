@@ -103,9 +103,12 @@ io.on('connection', (socket)=>{
     })
     socket.on('user-left-chat', details => {
         console.log(`${details.userLeft} has left the chat`);
-        socket.leave(details.room)
+        socket.leave(details.room);
         io.to(details.room).emit('user-left-chat', details);
     });
+    socket.on('leave-chat-room', (room) => {
+        socket.leave(room);
+    })
     socket.on('send-turn-to-server', data => {
         io.to(data.room).emit('change-turns', {cellId:data.cellId, color:data.color});
     })

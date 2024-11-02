@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Request</title>
-    <link rel="stylesheet" href="chatRequest.css">
+    <title></title>
+    <link rel="stylesheet" href="requests.css">
     
 </head>
 <body>
     <div id="container">
-        <div id="title">Chat Requests</div>
+        <div id="title">Requests</div>
         <div id="requestsContainer">
             
         </div>
@@ -87,7 +87,7 @@
             }
             
 
-        ipcRenderer.on('chat-request', (event, requests) => {
+        ipcRenderer.on('requests', (event, requests) => {
             console.log('Requests are: ',requests);
             
             createRequests(requests);

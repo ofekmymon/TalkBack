@@ -93,11 +93,11 @@ function removeDuplicates(list){
     
     return uniqueArray;
 };
-ipcRenderer.on('rejected-chat-request',(event,messageId) => {
+ipcRenderer.on('rejected-request',(event,messageId) => {
     deleteRequest(messageId);
 });
 
-ipcRenderer.on('accepted-chat-request',(event,messageId) => {
+ipcRenderer.on('accepted-request',(event,messageId) => {
     deleteRequest(messageId);
 });
 ipcRenderer.on('ask-username', () => {
@@ -145,12 +145,6 @@ async function getUsernameFromServer(token){
     return data.username;
 }
 
-function convertBoolToStatus(bool){
-    if(bool){
-        return 'Online'
-    }
-    return 'Offline'
-}
 function searchbar(list) {
     const searchBar = document.getElementById('searchBar');
     if (!searchBar) {
@@ -191,9 +185,10 @@ async function getPictureFromServer(username,method){
     
     const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
     const data = await response.json();
+    const imgElement = document.getElementById('profileIcon');
+
     if(data.image){
         if(method === 'profile'){
-            const imgElement = document.getElementById('profileIcon');
             imgElement.src = `data:${data.contentType};base64,${data.image}`
         }
         else if(method === 'contacts'){
@@ -201,14 +196,19 @@ async function getPictureFromServer(username,method){
             imgElement.src = `data:${data.contentType};base64,${data.image}`
         }
     }
-    else if(data.status == 500){
-        alert('Sorry we could not fetch your image')
+    else if(response.status == 404){
+        imgElement.src = "../../public/defaultProfilePic.png"
+    }
+    else if(response.status == 500){
+        alert('Sorry we could not fetch your image');
+        imgElement.src = "../../public/defaultProfilePic.png"
     }
 }
+
 document.getElementById('requestsMenu').addEventListener('click',()=>{
     document.getElementById('requestsMenuNotifier').classList.remove('new');
     const requests = askRequests();
-    ipcRenderer.send('open-chat-requests-menu',requests);
+    ipcRenderer.send('open-requests-menu',requests);
 });
 document.getElementById('profileIcon').addEventListener('click',()=>{
     document.getElementById('fileInput').click();
@@ -226,7 +226,6 @@ document.getElementById('fileInput').addEventListener('change',async (event)=>{
             const username = askUsername();
             formData.append('username', username);
             formData.append('image',file);
-            const bytes = new Uint8Array(imageUrl);
             fetch('http://localhost:3000/uploadPicture',{
                 method:'POST',
                 body: formData
@@ -280,8 +279,6 @@ function createContactList(username,userList){
 
             //get online status from the false/true in db
             
-            const status = convertBoolToStatus(item.onlinestatus);
-
             const contactContainer = document.createElement('div');
             contactContainer.id = item;
             contactContainer.classList.add('contactContainer');
@@ -302,6 +299,7 @@ function createContactList(username,userList){
             gameButton.id = item;
             gameButton.textContent = 'Play Game'
             gameButton.classList.add('gameButton');
+            gameButton.addEventListener('click',()=>{sendRequest(askUsername(),'game',item)});
 
             const chatButton = document.createElement('button');
             chatButton.id = item;
@@ -322,7 +320,7 @@ function createContactList(username,userList){
 }
 function sendRequest(username,activity,recipient){
     const request = new Request(username,activity,recipient);
-    ipcRenderer.send('send-chat-request', request)
+    ipcRenderer.send('send-request', request)
     
 }
 
@@ -345,7 +343,7 @@ function sendRequest(username,activity,recipient){
             createContactList(username,activeClients);
             
         });
-        ipcRenderer.on('listen-for-chat-requests', (event, request) => {
+        ipcRenderer.on('listen-for-requests', (event, request) => {
             document.getElementById('requestsMenuNotifier').classList.add('new');
             storeRequests(request);        
         })

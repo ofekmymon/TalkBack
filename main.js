@@ -1,6 +1,7 @@
 const { log } = require('console');
 const { app, BrowserWindow, ipcMain, ipcRenderer } = require('electron');
 const Store = require("electron-store");
+const e = require('express');
 const path = require('path');
 const {io} = require('socket.io-client');
 const socket = io('http://localhost:3000');
@@ -8,7 +9,9 @@ const socket = io('http://localhost:3000');
 let loginWindow;
 let registerWindow;
 let ContactWindow;
-let ChatRequestWindow;
+let RequestsWindow;
+let Connect4Window;
+let WinWindow;
 const chatWindows = [];
 const store = new Store();
 
@@ -23,7 +26,7 @@ const createContactWindow = () => {
             contextIsolation: false,
         }
     });
-    // ContactWindow.removeMenu();
+    ContactWindow.removeMenu();
     ContactWindow.loadFile('./api/contacts/contacts.html');
 };
 
@@ -38,7 +41,7 @@ const createLoginWindow = () => {
         }
         
     });
-    // loginWindow.removeMenu();
+    loginWindow.removeMenu();
     loginWindow.loadFile('./api/login-register/login.html');
 };
 
@@ -69,6 +72,7 @@ const createErrorWindow = (errorMessage) => {
     });
 
     ErrorMessageWindow.loadFile('./api/errorWindow/error.html');
+    ErrorMessageWindow.removeMenu();
     
     ErrorMessageWindow.webContents.once('did-finish-load', () => {
         console.log(errorMessage);
@@ -76,21 +80,20 @@ const createErrorWindow = (errorMessage) => {
     });
 };
 
-const createChatRequestsWindow = (requests) => {
-    ChatRequestWindow = new BrowserWindow({
+const createRequestsWindow = (requests) => {
+    RequestsWindow = new BrowserWindow({
         width:300,
         height:500,
-        modal:true,
-        parent:ContactWindow,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
         }
     });
-    ChatRequestWindow.loadFile('./api/chatRequest/chatRequest.html');
+    RequestsWindow.loadFile('./api/requests/requests.html');
+    RequestsWindow.removeMenu();
     //sends the client the activity requests
-    ChatRequestWindow.webContents.once('did-finish-load', () => {
-        ChatRequestWindow.send('chat-request',requests);
+    RequestsWindow.webContents.once('did-finish-load', () => {
+        RequestsWindow.send('requests',requests);
     });
 };
 
@@ -105,6 +108,7 @@ const createChatWindow = (roomDetails) => {
         }
     });
     ChatWindow.loadFile('./api/chat/chat.html');
+    ChatWindow.removeMenu();
     ChatWindow.webContents.once('did-finish-load', () => {
         console.log(roomDetails);
         
@@ -128,6 +132,65 @@ const createChatWindow = (roomDetails) => {
         });
     });
 }
+
+const createConnect4Window = async (gameData) => {
+    Connect4Window = new BrowserWindow({
+        width: 650,
+        height: 600,
+        maximizable: false,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
+    });
+    Connect4Window.loadFile('./api/connect4/connect4.html');
+
+    const sender = gameData.roomName.split('-')[0];
+
+    //decide on who is which color
+    async function returnColor(){
+        if(await getUsername() === sender){
+            return 'blue';
+        }
+        else{
+            return 'orange';
+        }
+    };
+    const color = await returnColor();
+
+    Connect4Window.webContents.once('did-finish-load', () => {
+        Connect4Window.send('setup-game',{ you:gameData.you, opponent:gameData.otherUser, color, room:gameData.roomName});
+    });
+
+    Connect4Window.on('closed', () => {
+        console.log(' You left the game: ', gameData.roomName);
+        socket.emit('user-left-game', {room : gameData.roomName, userLeft : gameData.you});
+    });
+
+}
+
+const createWinWindow = (data) => {
+    WinWindow = new BrowserWindow({
+        width: 325,
+        height:400,
+        maximizable:false,
+        webPreferences:{
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+    WinWindow.loadFile('./api/connect4/winScreen/win.html');
+
+    WinWindow.webContents.once('did-finish-load', () => {
+        WinWindow.send('get-data', data);
+    })
+
+    WinWindow.on('close', () => {
+        socket.emit('user-quit', {room : data.room, userLeft : data.you})
+    })
+}
+
+
 //development line
 app.setPath('userData', path.join(app.getPath('userData'), 'client_' + Math.random()));
 
@@ -179,21 +242,24 @@ ipcMain.on('get-active-users',() => {
     });
 })
 
-ipcMain.on('open-chat-requests-menu',(event, requests) => {
-    createChatRequestsWindow(requests);
+ipcMain.on('open-requests-menu',(event, requests) => {
+    createRequestsWindow(requests);
 })
-ipcMain.on('send-chat-request', (event, request) => {
+ipcMain.on('send-request', (event, request) => {
     const roomName = `${request.sender}-${request.recipient}`
-    if(findExistingChat(roomName)){
+    if(request.activity === 'chat' && findExistingChat(roomName)){
         createErrorWindow('A chat with this user already exists');
     }
+    if(request.activity && Connect4Window){
+        createErrorWindow('You can only play one game');
+    }
     else{
-        socket.emit('send-chat-request', request);
+        socket.emit('send-request', request);
     }
 }) 
 //send requests to contact to delete them from the storage
 ipcMain.on('reject-request',(event, messageId)=>{
-    ContactWindow.webContents.send('rejected-chat-request', messageId);
+    ContactWindow.webContents.send('rejected-request', messageId);
     console.log('rejected request');
 
 });
@@ -201,23 +267,44 @@ ipcMain.on('accept-request', async (event, messageId)=>{
     if(findExistingChat(messageId)){
         createErrorWindow('A chat with this user already exists');
     }
+    
     else{
-        ContactWindow.webContents.send('accepted-chat-request',messageId);
-        console.log('accepted message');
-        const message = messageId.split('-');
-        const senderName = message[0];
-        const recipientName = await getUsername();
-        socket.emit('chat-accepted',{ sender:senderName , recipient: recipientName});
+        if(messageId.split('-')[2] === 'game' && Connect4Window){
+            createErrorWindow('You already have an open game');
+        }
+        else{
+            await sendRequestToServer(messageId);
+        }
+        
     }
     
 })
 
-ipcMain.on('send-message',(event, messageDetails) => {
+ipcMain.on('send-message', (event, messageDetails) => {
     console.log(messageDetails);
     socket.emit('sent-message-to-server', messageDetails);
 
 })
 
+ipcMain.on('send-turn-to-server', (event, data) => {
+    socket.emit('send-turn-to-server',data);
+});
+
+ipcMain.on('win-game', (event, data) => {
+    createWinWindow(data);
+});
+
+ipcMain.on('rematch-request', (event, data) => {
+    socket.emit('rematch-request', data);
+});
+ipcMain.on('rematch', (event) => {
+    if(Connect4Window){
+        Connect4Window.webContents.send('rematch');
+    }
+    else{
+        createErrorWindow('Could not create a new game after leaving');
+    }
+});
 
 ///////////////Token management////////////////
 ipcMain.on('set-first-token',(event ,userToken) =>{
@@ -227,7 +314,7 @@ ipcMain.on('token-request',(event) =>{
     const token = store.get('userToken');
     event.sender.send('getToken', token);
 });
-
+//////////////////////////////////////////////
 
 function getUsername() {
     return new Promise((resolve, reject) => {
@@ -240,6 +327,16 @@ function getUsername() {
             }
         });
     });
+}
+
+async function sendRequestToServer(messageId){
+    ContactWindow.webContents.send('accepted-request',messageId);
+    console.log('accepted message');
+    const message = messageId.split('-');
+    const senderName = message[0];
+    const activity = message[1];
+    const recipientName = await getUsername();
+    socket.emit('request-accepted',{ sender:senderName , recipient: recipientName , activity});
 }
 
 function findChatRoom(roomName){
@@ -261,16 +358,8 @@ function findExistingChat(roomName){
 }
 
 function deleteChat(roomName){
-    console.log('room name is ', roomName);
-    console.log('this is before: ');
-    console.log(chatWindows);
-    
     const index = chatWindows.findIndex(chat => chat.roomName === roomName);
-    console.log('index = ',index);
-    
     chatWindows.splice(index, 1);
-    console.log('this is after');
-    console.log(chatWindows);
 }
 
 socket.on('connect', ()=> {
@@ -280,18 +369,23 @@ socket.on('connect', ()=> {
             ContactWindow.webContents.send('active-users-update', activeClients);        
         }
     });
-    socket.on('listen-for-chat-requests', request => {
+    socket.on('listen-for-requests', request => {
         if(ContactWindow){
-            ContactWindow.webContents.send('listen-for-chat-requests', request)
+            ContactWindow.webContents.send('listen-for-requests', request)
         }
     });
 
     socket.on('join-room', data => {
         console.log(data);
         
-        socket.emit('request-to-join-chat', data.roomName);
+        socket.emit('request-to-join-room', data.roomName);
         console.log(`Joined room: ${data.roomName} with ${data.otherUser}`);
-        createChatWindow(data);
+        if(data.activity === 'chat'){
+            createChatWindow(data);
+        }
+        else if(data.activity === 'game'){
+            createConnect4Window(data)
+        }
     });  
     
     socket.on('join-failed',otherUser => {
@@ -308,19 +402,44 @@ socket.on('connect', ()=> {
             console.log('Error getting message from server:' + error);
         }
     });
-    socket.on('user-left', details => {
+    socket.on('user-left-chat', details => {
         try{
             const chatRoom = findChatRoom(details.room);
             if(chatRoom){
                 chatRoom.webContents.send('user-left',details);
                 deleteChat(details.room)
-                
             }
         }
         catch(error){
             console.log('user left');
         }  
 
+    });
+    socket.on('change-turns', data => {
+        if(Connect4Window){
+            Connect4Window.webContents.send('turn-changed',data);
+        }
+    });
+    socket.on('rematch-requested', sender => {
+        console.log('rematch request from server.');
+        if(WinWindow){
+            console.log('boutta reach player');
+            
+            WinWindow.webContents.send('rematch-requested', sender)
+        }
+    });
+    socket.on('user-left-game-room', userLeft => {
+        console.log(userLeft , ` Has left the game`);
+
+        if(!(getUsername() === userLeft)){
+            createErrorWindow('Your opponent has left the game');
+            Connect4Window.webContents.send('user-left');
+        }
+    });
+    socket.on('user-quit-game-room', userLeft => {
+        if(!(getUsername() === userLeft)){
+            WinWindow.webContents.send('user-quit');
+        }
     })
 
     
@@ -331,4 +450,12 @@ socket.on('connect', ()=> {
 
 app.on('ready', () => { 
     createRegisterWindow();
+
+
+
+    ///testing
+
+    //createErrorWindow('Error: chat chat chat chat chat chat ')
+
+    // createWinWindow({winner: 'ofek', winnerScore: 1, loser:'osher', loserScore:0, you: 'ofek' , room: 'ofek-osher-game'});
 });

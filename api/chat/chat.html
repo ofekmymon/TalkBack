@@ -94,8 +94,12 @@
                 const imgElement = document.getElementById('recipientPicture');
                 imgElement.src = `data:${data.contentType};base64,${data.image}`
             }
-            else if(data.status == 500){
-                alert('Sorry we could not fetch your friend`s image');
+            else if(response.status == 404){
+                imgElement.src = "../../public/defaultProfilePic.png"
+            }
+            else if(response.status == 500){
+                alert('Sorry we could not fetch your image');
+                imgElement.src = "../../public/defaultProfilePic.png"
             }
         }
 

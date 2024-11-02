@@ -48,26 +48,32 @@ io.on('connection', (socket)=>{
         socket.emit('active-users-response', Object.keys(activeClients));
     });
 
-    socket.on('send-chat-request',(request) => {
+    socket.on('send-request',(request) => {
         console.log(request);
         const recipientSocketId = activeClients[request.recipient];
         if(recipientSocketId){
-            io.to(recipientSocketId).emit('listen-for-chat-requests', request);
+            io.to(recipientSocketId).emit('listen-for-requests', request);
         }
         else{
             console.log(`User ${recipientUsername} is offline`);
         }
     })
-    socket.on('chat-accepted',(data)=>{
+    socket.on('request-accepted',data =>{
         const recipientUsername = data.recipient;
         const senderUsername = data.sender;
-        console.log(recipientUsername,' accepted ',senderUsername,' chat request');
-        const roomName = `${senderUsername}-${recipientUsername}`;
+        console.log(recipientUsername,' accepted ',senderUsername,` ${data.activity} request`);
+        let roomName
+        if(data.activity === 'chat'){
+            roomName = `${senderUsername}-${recipientUsername}`;
+        }
+        else{
+            roomName = `${senderUsername}-${recipientUsername}-game`
+        }
         const recipientSocketId = activeClients[recipientUsername];
         const senderSocketId = activeClients[senderUsername];
         if(recipientSocketId && senderSocketId){
-            io.to(senderSocketId).emit('join-room',{roomName,'otherUser':recipientUsername, 'you':senderUsername});
-            io.to(recipientSocketId).emit('join-room', {roomName,'otherUser':senderUsername, 'you':recipientUsername});
+            io.to(senderSocketId).emit('join-room',{roomName, otherUser:recipientUsername, you:senderUsername, activity:data.activity});
+            io.to(recipientSocketId).emit('join-room', {roomName, otherUser:senderUsername, you:recipientUsername, activity:data.activity});
 
             console.log(`Room Created: ${roomName}`);
         }
@@ -82,7 +88,7 @@ io.on('connection', (socket)=>{
         }
     });
 
-    socket.on('request-to-join-chat', room => {
+    socket.on('request-to-join-room', room => {
         console.log('join da room');
         
         socket.join(room);
@@ -98,9 +104,26 @@ io.on('connection', (socket)=>{
     socket.on('user-left-chat', details => {
         console.log(`${details.userLeft} has left the chat`);
         socket.leave(details.room)
-        io.to(details.room).emit('user-left', details);
+        io.to(details.room).emit('user-left-chat', details);
     });
-    
+    socket.on('send-turn-to-server', data => {
+        io.to(data.room).emit('change-turns', {cellId:data.cellId, color:data.color});
+    })
+    socket.on('rematch-request', data => {
+        console.log('rematch accept reached server');
+        console.log(data);
+        
+        io.to(data.room).emit('rematch-requested', data.sender);
+    })
+    socket.on('user-left-game', data => {
+        socket.leave(data.room);
+        console.log(data.userLeft , ` Has left the game`);
+        io.to(data.room).emit('user-left-game-room', data.userLeft);
+    });
+    socket.on('user-quit', data => {
+        socket.leave(data.room);
+        io.to(data.room).emit('user-quit-game-room', data.userLeft);
+    })
 });
 
 
@@ -258,12 +281,12 @@ app.get('/getProfilePicture',async (req,res)=>{
             });
         }
         else{
-            res.status(404).send({message:'No image found for the user'})
+            res.status(404).send({message:'No image found for the user',src:'/defaultProfilePic.png'})
         }
     }
     catch(err){
         console.error('Error fetching image: ', err)
-        res.status(500).send({message: 'Failed to retrieve image'})
+        res.status(500).send({message: 'Failed to retrieve image',src:'/defaultProfilePic.png'})
     }
     
 

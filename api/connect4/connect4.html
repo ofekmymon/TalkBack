@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game</title>
+    <link rel="stylesheet" href="connect4.css">
+</head>
+<body>
+
+    <div id="app">
+
+        <div id="details">
+            <div id="you" class="userDetails">
+                <div id="youTimer" class="timer">120s</div>
+                <div id="youTurnBulb" class="turnbulb"></div>
+                <div id="youName" class="name"></div>
+                <img id="youPicture" class="profilePicture" >
+            </div>
+            <div id="scoreContainer">
+                <div id="youScore">0</div>
+                <div id="opponentScore">0</div>
+            </div>
+            <div id="opponent" class="userDetails">
+                <img id="opponentPicture"  class="profilePicture" >
+                <div id="opponentName" class="name"></div>
+                <div id="opponentTurnBulb" class="turnbulb"></div>
+                <div id="opponentTimer" class="timer">120s</div>
+            </div>
+        </div>
+        <div id="grid">
+            
+
+        </div>
+
+    </div>
+    
+
+
+
+
+
+    <script> 
+
+        const {ipcRenderer} = require('electron');
+
+        ipcRenderer.on('setup-game', async (event,data) => {
+            console.log(data);
+            
+            sessionStorage.setItem('youScore', 0);
+            sessionStorage.setItem('opponentScore', 0);
+
+            sessionStorage.setItem('room', data.room);
+            const yourName = data.you;
+            sessionStorage.setItem('you', yourName);
+
+            document.getElementById('youName').textContent = yourName;
+
+            const opponentName = data.opponent;
+            sessionStorage.setItem('opponent', opponentName);
+            document.getElementById('opponentName').textContent = opponentName;
+
+            document.getElementById('youPicture').src = await getPictureFromServer(yourName);
+            document.getElementById('opponentPicture').src = await getPictureFromServer(opponentName);
+
+            sessionStorage.setItem('color', data.color);
+
+            
+            createBoard(data.color);
+        })
+
+        //THE ONE WHO INVITED GETS THE FIRST TURN AND THE COLOR BLUE. IF REPLAYING, THE ROLES REVERSE
+
+        async function getPictureFromServer(username){
+            try{
+                const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
+                const data = await response.json();
+                const imgElement = document.getElementById('recipientPicture');
+                if(data.image){
+                    return `data:${data.contentType};base64,${data.image}`;
+                }
+                else if(response.status == 404){
+                    return "../../public/defaultProfilePic.png";
+                }
+            }
+            catch(error){
+                // alert('Sorry we could not fetch your image');
+                return "../../public/defaultProfilePic.png";
+                console.log('error');
+                
+            }
+
+        }
+
+
+        function changeTurn(cellId,color){
+            const room = sessionStorage.getItem('room');
+            ipcRenderer.send('send-turn-to-server',{cellId,room,color});
+        }
+        
+
+        function addScorePoint(player){
+            //get either you or opponent
+            const score = parseInt(sessionStorage.getItem(`${player}Score`));
+            sessionStorage.setItem(`${player}Score`, score+1);
+            console.log(player);
+            console.log(`${player}Score`);
+            
+            
+            console.log(sessionStorage.getItem(`${player}Score`));
+            
+        }
+
+        function addPiece(column,color){
+            const cells = column.children;
+            for(let i = cells.length-1; i>=0 ; i--){
+                const cell = cells[i];
+                if(cell.classList.contains('blue') || cell.classList.contains('orange')){
+                    continue;
+                }
+                else{
+                    changeTurn(cell.id,color);
+                    break;
+                }
+            }
+        }
+
+        
+
+
+        function checkColumn(column,cell,color){
+            const cellList = column.children;
+            let counter = 1;
+            const startingIndex = Array.from(cellList).indexOf(cell);
+
+            //checkdown  
+            for(let i = startingIndex + 1;i < cellList.length; i++){
+                try{
+                    if(cellList[i].classList.contains(color)){
+                        counter ++;
+                    }
+                    else{
+                        break;
+                    }
+                }
+                catch{
+                    break;
+                }
+            }
+            //checkup
+            for(let i = startingIndex - 1;i >= 0; i--){
+                try{
+                    if(cellList[i].classList.contains(color)){
+                        counter ++;
+                    }
+                    else{
+                        break;
+                    }
+                }
+                catch{
+                    break;
+                }
+            }
+            console.log(counter);
+            
+            if(counter >= 4){
+                console.log('WIN COLUMN');
+                return true;
+            }
+        }
+
+
+        function checkRow(column,cell,color,x,y){
+            const board = document.getElementById('grid');
+            const columnList = board.children;
+            const startingIndex = x-1;
+            let counter = 1;
+            // checkLeft
+            for(let i = startingIndex - 1; i >= 0; i--){
+                // find the cell with the same Y index
+                try{
+                    const cell = Array.from(columnList[i].children).find(cell => cell.id.split('-')[1] === y);
+                    if(cell.classList.contains(color)){
+                        counter++;
+                    }
+                    else{
+                        break;
+                    }
+                }
+                catch{
+                    break;
+                } 
+            }
+            // checkRight
+            for(let i = startingIndex + 1; i < columnList.length ; i++){
+                try{
+                    const cell = Array.from(columnList[i].children).find(cell => cell.id.split('-')[1] === y);
+                    if(cell.classList.contains(color)){
+                        counter++;
+                    }
+                    else{
+                        break;
+                    }
+                }
+                catch{
+                    break;
+                } 
+            }
+            
+            if(counter >= 4){
+                console.log('WIN ROW');
+                return true;
+            }
+        }
+
+        
+        function checkDiagonal(column,cell,color,x,y,direction){
+            const board = document.getElementById('grid');
+            const columnList = board.children;
+            const startingIndex = x - 1;
+            let counter = 1;
+            x = parseInt(x);
+            y = parseInt(y);
+            let inc = 1;
+            //checkRight
+            for(let i = startingIndex + 1; i < columnList.length; i++){
+                // if counter + 1 means the line is continuing 
+                try{
+                    let wantedX;
+                    let wantedY
+                    if(direction === 'positive'){
+                        wantedX = x + inc;
+                        wantedY = y + inc;
+                    }
+                    else if(direction === 'negative'){
+                        wantedX = x +  inc;
+                        wantedY = y - inc;
+                    }
+                   
+
+                    const cell = Array.from(columnList[i].children).find(cell => 
+                        cell.id.split('-')[0] === (wantedX).toString() && 
+                        cell.id.split('-')[1] === (wantedY).toString() 
+                    );
+                    if(cell.classList.contains(color)){
+                        counter++;
+                        inc++;
+                    }
+                    else{
+                        inc = 1;
+                        break;
+                    }
+                }
+                catch{
+                    inc = 1;
+                    break;
+                }
+            }
+            //checkLeft
+            for(let i = startingIndex - 1; i >= 0; i--){
+                try{
+                    let wantedX;
+                    let wantedY;
+                    if(direction === 'positive'){
+                        wantedX = x - inc;
+                        wantedY = y - inc;
+                    }
+                    else if(direction === 'negative'){
+                        wantedX = x - inc;
+                        wantedY = y + inc;
+                    }
+                    
+                    const cell = Array.from(columnList[i].children).find(cell => 
+                        cell.id.split('-')[0] === (wantedX).toString() && 
+                        cell.id.split('-')[1] === (wantedY).toString() 
+                    );
+                    if(cell.classList.contains(color)){
+                        counter++;
+                        inc++;
+                    }
+                    else{
+                        inc = 1;
+                        break;
+                    }
+                }
+                catch{
+                    inc = 1;
+                    break;
+                }
+            }
+            
+            if(counter >= 4 ){
+                console.log('DIAGONAL WIN');
+                return true;
+            }
+        }
+    
+
+
+        function checkWin(columnIndex,cell,color, potentialWinner, potentialLoser){
+            // there are 4 checks column, row, diagonal1 diagonal2;
+            const board = document.getElementById('grid');
+            const columnList = board.children;
+            const column = columnList[columnIndex];
+            console.log(column);
+            console.log(columnIndex);
+            
+            
+            const id = cell.id.split('-');
+            const x = id[0];
+            const y = id[1];
+            //column
+            if(checkColumn(column,cell,color) || checkRow(column,cell,color,x,y) || 
+            checkDiagonal(column,cell,color,x,y,'positive') ||  checkDiagonal(column,cell,color,x,y,'negative')){
+                document.getElementById('grid').classList.remove('youTurn');
+                addScorePoint(potentialWinner);
+                console.log(potentialWinner);
+                console.log(potentialLoser);
+                
+                ipcRenderer.send('win-game', {
+                    winner : sessionStorage.getItem(potentialWinner),
+                    winnerScore: sessionStorage.getItem(`${potentialWinner}Score`),
+                    loser : sessionStorage.getItem(potentialLoser),
+                    loserScore : sessionStorage.getItem(`${potentialLoser}Score`),
+                    you : sessionStorage.getItem('you'),
+                    room : sessionStorage.getItem('room')
+                })
+
+            }
+                   
+        }
+
+        function createBoard(color){
+            
+            const board = document.getElementById('grid');
+            board.replaceChildren();
+            // check who starts
+            if(color === 'blue'){
+                board.classList.add('youTurn');
+                document.getElementById('youTurnBulb').classList.add('active');
+            }
+            else{
+                document.getElementById('opponentTurnBulb').classList.add('active');
+            }
+            for(let i=0; i<7;i++){
+                const column = document.createElement('div');
+                column.classList.add('column');
+                column.id = i+1;
+                column.addEventListener('click', ()=>{if(board.classList.contains('youTurn'))addPiece(column,color)});
+                for(let i=0; i<6; i++){
+                    const cell = document.createElement('cell');
+                    cell.classList.add('cell');
+                    cell.id = `${column.id}-${6-i}`;
+                    cell.textContent = cell.id;
+                    column.appendChild(cell);
+
+                }
+                
+                board.appendChild(column);
+            }[]
+
+        }
+
+        function findCell(id){
+            const board = document.getElementById('grid');
+            const columnList = board.children;
+            const columnIndex = id.split('-')[0];
+            console.log(columnIndex);
+            console.log(Array.from(columnList[columnIndex-1].children));
+            
+            const cell = Array.from(columnList[columnIndex-1].children).find(cell => cell.id === id);
+            console.log(cell);
+            
+            return cell;
+        }
+
+        ipcRenderer.on('turn-changed',(event, data) => {
+            // check who made the turn
+            
+            document.getElementById('grid').classList.toggle('youTurn');
+            document.getElementById('youTurnBulb').classList.toggle('active');
+            document.getElementById('opponentTurnBulb').classList.toggle('active');
+            const cellId = data.cellId
+            const cell = findCell(cellId);
+            const columnIndex = parseInt((cellId).split('-')[0]) - 1;
+            const color = data.color;
+            cell.classList.add(color);
+            if(document.getElementById('grid').classList.contains('youTurn')){
+                // because grid was toggled, if active means the opponent won
+                checkWin(columnIndex,cell,color,'opponent','you');
+
+            }
+            else{
+                checkWin(columnIndex,cell,color,'you','opponent');
+
+            }
+        })
+
+        ipcRenderer.on('rematch', (event) => {
+            if(sessionStorage.getItem('color') === 'blue'){
+                sessionStorage.setItem('color', 'orange');
+            }
+            else{
+                sessionStorage.setItem('color', 'blue');
+            }
+            document.getElementById('youScore').textContent = sessionStorage.getItem('youScore');
+            document.getElementById('opponentScore').textContent = sessionStorage.getItem('opponentScore');
+
+            createBoard(sessionStorage.getItem('color'));
+        });
+
+        ipcRenderer.on('user-left', (event) => {
+            document.getElementById('grid').classList.remove('youTurn');
+        })
+    </script>
+</body>
+</html>

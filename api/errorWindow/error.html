@@ -10,6 +10,7 @@
 <body>
     <div id="container">
         <div id="errorMessage"></div>
+        <button id="close">Close</button>
     </div>
 
 
@@ -20,6 +21,9 @@
             document.getElementById('errorMessage').textContent = message;
         })
 
+        document.getElementById('close').addEventListener('click', ()=>{
+            window.close();
+        })
         
     </script>
 </body>

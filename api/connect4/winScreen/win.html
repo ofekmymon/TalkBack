@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="stylesheet" href="win.css">
+</head>
+<body>
+    
+    <div id="container">
+        <div id="winnerDetails">
+            <div id="winnerName"></div>
+        </div>
+        <div id="scoreDetails">
+            <div id="scorePictures">
+                <img id="winnerPicture">
+                <img id="loserPicture">
+            </div>
+            <div id="scoreNames">
+                <span id="winnerScoreName"></span>
+                <span id="loserScoreName"></span>
+            </div>
+            <div id="score">
+                <span id="winnerScore"></span>
+                <span id="loserScore"></span>
+            </div>
+        </div>
+        <div id="buttonContainer">
+            <div id="rematchBulbs"> 
+                <div id="winnerBulb" class="bulb"></div>
+                <div id="loserBulb" class="bulb"></div>
+            </div>
+            <button id="rematch" class="btn">Request Rematch?</button>
+            <button id="quit" class="btn">Quit</button>
+        </div>
+    </div>
+
+    <script>
+        const {ipcRenderer} = require('electron');
+        let status; 
+        ipcRenderer.on('get-data', async (event, data) => {
+            document.getElementById('winnerName').textContent = `${data.winner} Wins!`;
+            document.getElementById('winnerScoreName').textContent = data.winner;
+            document.getElementById('loserScoreName').textContent = data.loser;
+            document.getElementById('winnerScore').textContent = data.winnerScore;
+            document.getElementById('loserScore').textContent = data.loserScore;
+
+            document.getElementById('winnerPicture').src = await getPictureFromServer(data.winner);
+            document.getElementById('loserPicture').src = await getPictureFromServer(data.loser);
+
+            if(data.you === data.winner){
+                status = 'winner';
+            }
+            else{
+                status = 'loser';
+            }
+
+            function quit(username){
+                window.close();
+            }
+            document.getElementById('quit').addEventListener('click', () => {quit({quitter : data.you, room : data.room})});
+
+
+            function rematch(){
+                ipcRenderer.send('rematch-request', {sender : status, room : data.room});
+            }
+            document.getElementById('rematch').addEventListener('click',()=>{rematch()});
+        })
+        
+        async function getPictureFromServer(username){
+            try{
+                const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
+                const data = await response.json();
+                const imgElement = document.getElementById('recipientPicture');
+                if(data.image){
+                    return `data:${data.contentType};base64,${data.image}`;
+                }
+                else if(response.status == 404){
+                    return "../../public/defaultProfilePic.png";
+                }
+            }
+            catch(error){
+                // alert('Sorry we could not fetch your image');
+                return "../../public/defaultProfilePic.png";
+                console.log('error');
+                
+            }
+
+        }
+
+        
+
+        
+
+        ipcRenderer.on('rematch-requested', (event, sender) => {
+            // if 2 bulbs sends the ipc and then the game to remake it.
+            if(sender === 'loser'){
+                document.getElementById('loserBulb').classList.add('active');
+                if(document.getElementById('winnerBulb').classList.contains('active')){
+                    ipcRenderer.send('rematch');
+                    window.close();
+                }
+            }
+            else{
+                document.getElementById('winnerBulb').classList.add('active');
+                if(document.getElementById('loserBulb').classList.contains('active')){
+                    ipcRenderer.send('rematch');
+                    window.close();
+
+                }
+            }
+        });
+        ipcRenderer.on('user-quit', (event) => {
+            if(status === 'winner'){
+                document.getElementById('loserBulb').classList.remove('active');
+                document.getElementById('loserBulb').classList.add('left');
+            }
+            else{
+                document.getElementById('winnerBulb').classList.remove('active');
+                document.getElementById('winnerBulb').classList.add('left');
+            }
+        })
+
+    </script>
+</body>
+</html>

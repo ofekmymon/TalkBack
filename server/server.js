@@ -121,8 +121,11 @@ io.on('connection', (socket)=>{
     socket.on('user-left-game', data => {
         socket.leave(data.room);
         console.log(data.userLeft , ` Has left the game`);
-        io.to(data.room).emit('user-left-game-room', data.userLeft);
+        io.to(data.room).emit('user-left-game-room', {userLeft: data.userLeft, room: data.room});
     });
+    socket.on('leave-game-room', room => {
+        socket.leave(room)
+    })
     socket.on('user-quit', data => {
         socket.leave(data.room);
         io.to(data.room).emit('user-quit-game-room', data.userLeft);

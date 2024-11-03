@@ -107,6 +107,9 @@ html,body{
     background-color: #21303b;
     color: #bca565;
 }
+.btn:active{
+    font-size: small;
+}
 .sortingButton{
     height: 100%;
 }

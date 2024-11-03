@@ -164,6 +164,7 @@ const createConnect4Window = async (gameData) => {
     });
 
     Connect4Window.on('closed', () => {
+        Connect4Window = null;
         console.log(' You left the game: ', gameData.roomName);
         socket.emit('user-left-game', {room : gameData.roomName, userLeft : gameData.you});
     });
@@ -324,6 +325,8 @@ ipcMain.on('rematch', (event) => {
     }
 });
 ipcMain.on('quit-game', (event,data) => {
+    WinWindow.close();
+    Connect4Window.close();
     socket.emit('user-quit', {room : data.room, userLeft : data.you})
 })
 
@@ -458,10 +461,10 @@ socket.on('connect', ()=> {
             WinWindow.webContents.send('rematch-requested', sender)
         }
     });
-    socket.on('user-left-game-room', userLeft => {
-        console.log(userLeft , ` Has left the game`);
-
-        if(!(getUsername() === userLeft)){
+    socket.on('user-left-game-room', data => {
+        console.log(data.userLeft , ` Has left the game`);
+        socket.emit('leave-game-room' , data.room);
+        if(!(getUsername() === data.userLeft)){
             createErrorWindow('Your opponent has left the game');
             try{
                 Connect4Window.webContents.send('user-left');

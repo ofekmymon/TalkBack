@@ -312,7 +312,6 @@
             //column
             if(checkColumn(column,cell,color) || checkRow(column,cell,color,x,y) || 
             checkDiagonal(column,cell,color,x,y,'positive') ||  checkDiagonal(column,cell,color,x,y,'negative')){
-                addScorePoint(potentialWinner);                
                 win(potentialWinner,potentialLoser);
 
             }
@@ -387,6 +386,7 @@
 
 
         function win(winner,loser){
+            clearInterval(timerInterval);
             document.getElementById('grid').classList.remove('youTurn');
             addScorePoint(winner);
             ipcRenderer.send('win-game', {
@@ -423,23 +423,29 @@
             const columnIndex = parseInt(cellId.split('-')[0]) - 1;
 
             cell.classList.add(color);
+            cell.style.animation = 'drop 0.5s ease-out'
 
             const isYourTurn = document.getElementById('grid').classList.contains('youTurn');
             if (isYourTurn) {
-                checkWin(columnIndex, cell, color, 'opponent', 'you');
-            } else {
                 checkWin(columnIndex, cell, color, 'you', 'opponent');
+            } else {
+                checkWin(columnIndex, cell, color, 'opponent', 'you');
             }
 
             switchTurn(!isYourTurn);
         });
 
         ipcRenderer.on('rematch', (event) => {
+            console.log('rematching');
+            
             if(sessionStorage.getItem('color') === 'blue'){
                 sessionStorage.setItem('color', 'orange');
+                document.getElementById('grid').classList.remove('youTurn');
             }
             else{
                 sessionStorage.setItem('color', 'blue');
+                document.getElementById('grid').classList.add('youTurn');
+
             }
             document.getElementById('youScore').textContent = sessionStorage.getItem('youScore');
             document.getElementById('opponentScore').textContent = sessionStorage.getItem('opponentScore');

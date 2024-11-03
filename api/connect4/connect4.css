@@ -1,3 +1,14 @@
+@keyframes drop {
+    from {
+        transform: translateY(-1000%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 html,body{
     margin: 0;
     height: 99%;
@@ -126,6 +137,9 @@ html,body{
     background-color: #a07b00;
     border-radius: 50%;
     box-shadow: inset 2px 1px 0px rgba(0, 0, 0, 0.278);
+}
+.cell.blue, .cell.orange { 
+    animation: drop 0.5s ease-out;
 }
 
 

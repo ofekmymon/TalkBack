@@ -12,6 +12,7 @@ let ContactWindow;
 let RequestsWindow;
 let Connect4Window;
 let WinWindow;
+let TieWindow;
 const chatWindows = [];
 const store = new Store();
 
@@ -175,6 +176,8 @@ const createWinWindow = (data) => {
     WinWindow = new BrowserWindow({
         width: 325,
         height:400,
+        modal:true,
+        parent:Connect4Window,
         maximizable:false,
         webPreferences:{
             nodeIntegration: true,
@@ -186,7 +189,25 @@ const createWinWindow = (data) => {
     WinWindow.webContents.once('did-finish-load', () => {
         WinWindow.send('get-data', data);
     })
+}
 
+const createTieWindow = (data) => {
+    TieWindow = new BrowserWindow({
+        width: 325,
+        height:400,
+        modal:true,
+        parent:Connect4Window,
+        maximizable:false,
+        webPreferences:{
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+    TieWindow.loadFile('./api/connect4/tieScreen/tie.html');
+
+    TieWindow.webContents.once('did-finish-load', () => {
+        TieWindow.send('get-data', data);
+    })
 }
 
 
@@ -325,9 +346,18 @@ ipcMain.on('rematch', (event) => {
     }
 });
 ipcMain.on('quit-game', (event,data) => {
-    WinWindow.close();
+    if(WinWindow){
+        WinWindow.close();
+    }
+    else if(TieWindow){
+        TieWindow.close();
+    }
     Connect4Window.close();
     socket.emit('user-quit', {room : data.room, userLeft : data.you})
+})
+
+ipcMain.on('send-tie', (event, data) => {
+    createTieWindow(data);
 })
 
 ///////////////Token management////////////////
@@ -457,8 +487,11 @@ socket.on('connect', ()=> {
         console.log('rematch request from server.');
         if(WinWindow){
             console.log('boutta reach player');
-            
-            WinWindow.webContents.send('rematch-requested', sender)
+            WinWindow.webContents.send('rematch-requested', sender);
+        }
+        else if(TieWindow){
+            console.log('boutta reach the tied player');
+            TieWindow.webContents.send('rematch-requested', sender);
         }
     });
     socket.on('user-left-game-room', data => {

@@ -43,6 +43,7 @@
     <script> 
 
         const {ipcRenderer} = require('electron');
+        let turnCount;
 
         ipcRenderer.on('setup-game', async (event,data) => {
             console.log(data);
@@ -129,6 +130,8 @@
 
 
         function checkColumn(column,cell,color){
+            let winningCells = [];
+            winningCells.push(cell);
             const cellList = column.children;
             let counter = 1;
             const startingIndex = Array.from(cellList).indexOf(cell);
@@ -138,6 +141,7 @@
                 try{
                     if(cellList[i].classList.contains(color)){
                         counter ++;
+                        winningCells.push(cellList[i]);
                     }
                     else{
                         break;
@@ -152,6 +156,7 @@
                 try{
                     if(cellList[i].classList.contains(color)){
                         counter ++;
+                        winningCells.push(cellList[i]);
                     }
                     else{
                         break;
@@ -165,12 +170,15 @@
             
             if(counter >= 4){
                 console.log('WIN COLUMN');
+                winningCells.forEach(cell => {cell.classList.add('winCell')});
                 return true;
             }
         }
 
 
         function checkRow(column,cell,color,x,y){
+            let winningCells = [];
+            winningCells.push(cell);
             const board = document.getElementById('grid');
             const columnList = board.children;
             const startingIndex = x-1;
@@ -182,6 +190,7 @@
                     const cell = Array.from(columnList[i].children).find(cell => cell.id.split('-')[1] === y);
                     if(cell.classList.contains(color)){
                         counter++;
+                        winningCells.push(cell);
                     }
                     else{
                         break;
@@ -197,6 +206,7 @@
                     const cell = Array.from(columnList[i].children).find(cell => cell.id.split('-')[1] === y);
                     if(cell.classList.contains(color)){
                         counter++;
+                        winningCells.push(cell);
                     }
                     else{
                         break;
@@ -208,6 +218,7 @@
             }
             
             if(counter >= 4){
+                winningCells.forEach(cell => {cell.classList.add('winCell')});
                 console.log('WIN ROW');
                 return true;
             }
@@ -215,6 +226,8 @@
 
         
         function checkDiagonal(column,cell,color,x,y,direction){
+            let winningCells = [];
+            winningCells.push(cell);
             const board = document.getElementById('grid');
             const columnList = board.children;
             const startingIndex = x - 1;
@@ -244,6 +257,7 @@
                     );
                     if(cell.classList.contains(color)){
                         counter++;
+                        winningCells.push(cell);
                         inc++;
                     }
                     else{
@@ -276,6 +290,7 @@
                     );
                     if(cell.classList.contains(color)){
                         counter++;
+                        winningCells.push(cell);
                         inc++;
                     }
                     else{
@@ -291,31 +306,36 @@
             
             if(counter >= 4 ){
                 console.log('DIAGONAL WIN');
+                winningCells.forEach(cell => {cell.classList.add('winCell')});
                 return true;
             }
         }
     
 
 
-        function checkWin(columnIndex,cell,color, potentialWinner, potentialLoser){
-            // there are 4 checks column, row, diagonal1 diagonal2;
+        function checkForTie() {
             const board = document.getElementById('grid');
-            const columnList = board.children;
-            const column = columnList[columnIndex];
-            console.log(column);
-            console.log(columnIndex);
-            
-            
-            const id = cell.id.split('-');
-            const x = id[0];
-            const y = id[1];
-            //column
-            if(checkColumn(column,cell,color) || checkRow(column,cell,color,x,y) || 
-            checkDiagonal(column,cell,color,x,y,'positive') ||  checkDiagonal(column,cell,color,x,y,'negative')){
-                win(potentialWinner,potentialLoser);
+            const columns = Array.from(board.children);
 
+            for (const column of columns) {
+                const cells = Array.from(column.children);
+                for (const cell of cells) {
+                    if (!cell.classList.contains('blue') && !cell.classList.contains('orange')) {
+                        return false; 
+                    }
+                }
             }
-                   
+            return true;
+        }
+
+        function tie(){
+            ipcRenderer.send('send-tie', {
+                you : sessionStorage.getItem('you'),
+                youScore: sessionStorage.getItem(`youScore`),
+                opponent : sessionStorage.getItem('opponent'),
+                opponentScore : sessionStorage.getItem(`opponentScore`),
+                room : sessionStorage.getItem('room')
+            });
         }
 
         let timerInterval; 
@@ -338,8 +358,8 @@
         }
 
         function createBoard(color){
-            
             const board = document.getElementById('grid');
+            turnCount = 1;
             board.replaceChildren();
             // check who starts
             if(color === 'blue'){
@@ -359,7 +379,7 @@
                     const cell = document.createElement('cell');
                     cell.classList.add('cell');
                     cell.id = `${column.id}-${6-i}`;
-                    cell.textContent = cell.id;
+                    // cell.textContent = cell.id;
                     column.appendChild(cell);
 
                 }
@@ -375,17 +395,37 @@
             const board = document.getElementById('grid');
             const columnList = board.children;
             const columnIndex = id.split('-')[0];
-            console.log(columnIndex);
-            console.log(Array.from(columnList[columnIndex-1].children));
-            
             const cell = Array.from(columnList[columnIndex-1].children).find(cell => cell.id === id);
-            console.log(cell);
-            
             return cell;
+        }
+
+        function checkWin(columnIndex,cell,color, potentialWinner, potentialLoser){
+            // there are 4 checks column, row, diagonal1 diagonal2;
+            const board = document.getElementById('grid');
+            const columnList = board.children;
+            const column = columnList[columnIndex];
+            console.log(column);
+            console.log(columnIndex);
+            
+            
+            const id = cell.id.split('-');
+            const x = id[0];
+            const y = id[1];
+            //column
+            if(checkColumn(column,cell,color) || checkRow(column,cell,color,x,y) || 
+            checkDiagonal(column,cell,color,x,y,'positive') ||  checkDiagonal(column,cell,color,x,y,'negative')){
+                win(potentialWinner,potentialLoser);
+
+            }
+            if(checkForTie()){
+                tie();
+            }
+                   
         }
 
 
         function win(winner,loser){
+            console.log('win');
             clearInterval(timerInterval);
             document.getElementById('grid').classList.remove('youTurn');
             addScorePoint(winner);
@@ -417,6 +457,8 @@
         }
 
         ipcRenderer.on('turn-changed', (event, data) => {
+            turnCount ++;
+
             const cellId = data.cellId;
             const color = data.color;
             const cell = findCell(cellId);

@@ -141,6 +141,10 @@ html,body{
 .cell.blue, .cell.orange { 
     animation: drop 0.5s ease-out;
 }
+.cell.winCell {
+    box-shadow: 0 0 20px 10px rgba(242, 255, 0, 0.8), 0 0 40px 20px rgba(242, 255, 0, 0.6);
+    transition: box-shadow 0.3s ease-in-out;
+}
 
 
 

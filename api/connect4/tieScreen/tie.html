@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="stylesheet" href="tie.css">
+</head>
+<body>
+    
+    <div id="container">
+        <div id="title">Its A Tie</div>
+        <div id="scoreDetails">
+            <div id="scorePictures">
+                <img id="youPicture">
+                <img id="opponentPicture">
+            </div>
+            <div id="scoreNames">
+                <span id="youName"></span>
+                <span id="opponentName"></span>
+            </div>
+            <div id="score">
+                <span id="youScore"></span>
+                <span id="opponentScore"></span>
+            </div>
+        </div>
+        <div id="buttonContainer">
+            <div id="rematchBulbs"> 
+                <div id="youBulb" class="bulb"></div>
+                <div id="opponentBulb" class="bulb"></div>
+            </div>
+            <button id="rematch" class="btn">Request Rematch?</button>
+            <button id="quit" class="btn">Quit</button>
+        </div>
+    </div>
+
+    <script>
+        const {ipcRenderer} = require('electron');
+        let you; 
+        ipcRenderer.on('get-data', async (event, data) => {
+            document.getElementById('youName').textContent = data.you;
+            document.getElementById('opponentName').textContent = data.opponent;
+            document.getElementById('youScore').textContent = data.youScore;
+            document.getElementById('opponentScore').textContent = data.opponentScore;
+
+            document.getElementById('youPicture').src = await getPictureFromServer(data.you);
+            document.getElementById('opponentPicture').src = await getPictureFromServer(data.opponent);
+
+            you = data.you;
+
+            function quit(data){
+                ipcRenderer.send('quit-game', data)
+            }
+            document.getElementById('quit').addEventListener('click', () => {quit({quitter : data.you, room : data.room})});
+
+
+            function rematch(){
+                ipcRenderer.send('rematch-request', {sender : data.you, room : data.room});
+            }
+            document.getElementById('rematch').addEventListener('click',()=>{rematch()});
+        })
+        
+        async function getPictureFromServer(username){
+            try{
+                const response = await fetch(`http://localhost:3000/getProfilePicture?username=${username}`);
+                const data = await response.json();
+                const imgElement = document.getElementById('recipientPicture');
+                if(data.image){
+                    return `data:${data.contentType};base64,${data.image}`;
+                }
+                else if(response.status == 404){
+                    return "../../public/defaultProfilePic.png";
+                }
+            }
+            catch(error){
+                // alert('Sorry we could not fetch your image');
+                return "../../public/defaultProfilePic.png";
+                console.log('error');
+                
+            }
+
+        }
+
+        ipcRenderer.on('rematch-requested', (event, sender) => {
+            // if 2 bulbs sends the ipc and then the game to remake it.
+            if(sender === you){
+                document.getElementById('youBulb').classList.add('active');
+                if(document.getElementById('opponentBulb').classList.contains('active')){
+                    ipcRenderer.send('rematch');
+                    window.close();
+
+                }
+            }
+            else{
+                document.getElementById('opponentBulb').classList.add('active');
+                if(document.getElementById('youBulb').classList.contains('active')){
+                    ipcRenderer.send('rematch');
+                    window.close();
+                }
+
+            }
+        });
+        ipcRenderer.on('user-quit', (event) => {
+            document.getElementById('opponentBulb').classList.remove('active');
+            document.getElementById('opponentBulb').classList.add('left');
+        })
+
+    </script>
+</body>
+</html>

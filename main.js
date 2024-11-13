@@ -27,7 +27,7 @@ const createContactWindow = () => {
             contextIsolation: false,
         }
     });
-    // ContactWindow.removeMenu();
+    ContactWindow.removeMenu();
     ContactWindow.loadFile('./api/contacts/contacts.html');
 };
 
@@ -42,7 +42,7 @@ const createLoginWindow = () => {
         }
         
     });
-    // loginWindow.removeMenu();
+    loginWindow.removeMenu();
     loginWindow.loadFile('./api/login-register/login.html');
 };
 
@@ -56,7 +56,7 @@ const createRegisterWindow = () => {
             contextIsolation: false,
         }
     });
-    // registerWindow.removeMenu();
+    registerWindow.removeMenu();
     registerWindow.loadFile('./api/login-register/register.html');
 };
 
@@ -91,7 +91,7 @@ const createRequestsWindow = (requests) => {
         }
     });
     RequestsWindow.loadFile('./api/requests/requests.html');
-    // RequestsWindow.removeMenu();
+    RequestsWindow.removeMenu();
     //sends the client the activity requests
     RequestsWindow.webContents.once('did-finish-load', () => {
         RequestsWindow.send('requests',requests);
@@ -102,7 +102,6 @@ const createChatWindow = (roomDetails) => {
     const ChatWindow = new BrowserWindow({
         width: 330,
         height: 530,
-        // maximizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -211,7 +210,7 @@ const createTieWindow = (data) => {
 }
 
 
-//development line
+//testing line
 app.setPath('userData', path.join(app.getPath('userData'), 'client_' + Math.random()));
 
 
@@ -526,12 +525,4 @@ socket.on('connect', ()=> {
 
 app.on('ready', () => { 
     createRegisterWindow();
-
-
-
-    ///testing
-
-    //createErrorWindow('Error: chat chat chat chat chat chat ')
-
-    // createWinWindow({winner: 'ofek', winnerScore: 1, loser:'osher', loserScore:0, you: 'ofek' , room: 'ofek-osher-game'});
 });

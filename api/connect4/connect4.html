@@ -358,6 +358,7 @@
         }
 
         function createBoard(color){
+            tie();
             const board = document.getElementById('grid');
             turnCount = 1;
             board.replaceChildren();

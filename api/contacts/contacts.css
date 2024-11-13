@@ -2,6 +2,7 @@ html,body{
     background-color:#2c4252;
     font-family: Arial, Helvetica, sans-serif;
     height: 100%;
+    overflow: hidden;
 }
 #container{
     position: relative;
@@ -11,6 +12,14 @@ html,body{
     height: 90%;
     justify-content: space-between;
     align-items: center;
+}
+button{
+    background-color: #21303b;
+    color: yellow;
+}
+button:hover{
+    background-color: #21303b;
+    color: #e3c77a;
 }
 
 #profileContainer{
@@ -100,13 +109,10 @@ html,body{
     width: 100px;
     height: 30px;
     background-color: #2c4252;
-    color: #e3c77a;
+    color: yellow;
     transition: 0.2s all ease;
 }
-.btn:hover{
-    background-color: #21303b;
-    color: #bca565;
-}
+
 .btn:active{
     font-size: small;
 }

@@ -15,14 +15,9 @@ class Request {
 
 
 
-function signOut(){
-    goToLogin();
+function signout(){
+    ipcRenderer.send('log-out');
 }
-
-function goToLogin(){
-    ipcRenderer.send('switch-to-login');
-}
-
 
 //store on local storage
 function storeToken (token){
@@ -80,7 +75,7 @@ async function askFirstToken(){
         }, 5000);
     });
 }
-document.getElementById('signout').addEventListener('click',signOut);
+document.getElementById('signout').addEventListener('click',signout);
 
 function removeDuplicates(list){
     
@@ -249,7 +244,7 @@ function createContactList(username,userList){
     
     if(!userList){
         console.log(data.error);
-        signOut();
+        signout();
     }
     else{
         console.log('sending create contact list userlist : ', userList);
@@ -354,7 +349,7 @@ function sendRequest(username,activity,recipient){
     }   
     catch(err){
         console.log('error : ',err);
-        signOut();
+        signout();
     }
     
 })();

@@ -29,6 +29,9 @@ const createContactWindow = () => {
     });
     ContactWindow.removeMenu();
     ContactWindow.loadFile('./api/contacts/contacts.html');
+    ContactWindow.on('closed', () => {
+        ContactWindow = null;
+    })
 };
 
 const createLoginWindow = () => {
@@ -254,16 +257,23 @@ ipcMain.on('log-in', (event, username) => {
     console.log('no connect?');
     
 });
+ipcMain.on('log-out', () => {
+    if (ContactWindow) {
+        ContactWindow.close();
+        ContactWindow = null;
+    }
+    store.delete('userToken');  
+    createLoginWindow();
+});
 ipcMain.on('get-active-users',() => {
     socket.emit('active-users');
     socket.once('active-users-response', (activeClients) => {
         ContactWindow.webContents.send('active-users', activeClients);
     });
-})
-
+});
 ipcMain.on('open-requests-menu',(event, requests) => {
     createRequestsWindow(requests);
-})
+});
 ipcMain.on('refresh-requests', (event) => {
     if (ContactWindow && !ContactWindow.isDestroyed()) {
         ContactWindow.webContents.send('get-requests-data');
@@ -289,7 +299,7 @@ ipcMain.on('send-request', (event, request) => {
     else{
         socket.emit('send-request', request);
     }
-}) 
+});
 //send requests to contact to delete them from the storage
 ipcMain.on('reject-request',(event, messageId)=>{
     try{
@@ -317,13 +327,13 @@ ipcMain.on('accept-request', async (event, messageId)=>{
         
     }
     
-})
+});
 
 ipcMain.on('send-message', (event, messageDetails) => {
     console.log(messageDetails);
     socket.emit('sent-message-to-server', messageDetails);
 
-})
+});
 
 ipcMain.on('send-turn-to-server', (event, data) => {
     socket.emit('send-turn-to-server',data);
@@ -353,11 +363,11 @@ ipcMain.on('quit-game', (event,data) => {
     }
     Connect4Window.close();
     socket.emit('user-quit', {room : data.room, userLeft : data.you})
-})
+});
 
 ipcMain.on('send-tie', (event, data) => {
     createTieWindow(data);
-})
+});
 
 ///////////////Token management////////////////
 ipcMain.on('set-first-token',(event ,userToken) =>{
@@ -421,7 +431,7 @@ function deleteChat(roomName){
 socket.on('connect', ()=> {
     console.log('Connected to server with socket ID: ', socket.id);
     socket.on('active-users-update', activeClients => {
-        if(ContactWindow){
+        if(ContactWindow != null){
             ContactWindow.webContents.send('active-users-update', activeClients);        
         }
     });

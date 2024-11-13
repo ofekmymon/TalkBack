@@ -1,3 +1,4 @@
+require('dotenv').config();  // If you're using dotenv
 const { log } = require('console');
 const { app, BrowserWindow, ipcMain, ipcRenderer } = require('electron');
 const Store = require("electron-store");

@@ -9,7 +9,6 @@ const socketio = require('socket.io'); //ill use this for chat app
 const postgres = require('postgres');
 const sql = postgres(process.env.DATABASE_URL);
 
-
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '10mb' })); //allows the server to handle binary raw data
 app.use(bodyParser.json());

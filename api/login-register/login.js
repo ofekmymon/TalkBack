@@ -64,7 +64,7 @@ async function login(){
         
     }
     else{
-        alert('User not found')
+        ipcRenderer.send('user-not-found')
     }
 
 }

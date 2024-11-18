@@ -75,12 +75,12 @@ async function registerUser() {
                 fs.writeFile('public/last_user.txt',username,'utf-8',(err)=>{
                     console.log('file created successfuly');
                 });
-                alert('welcome!');
                 switchToLogin();
             }
 
         } else {
-            alert(errorMsg);
+            ipcRenderer.send('register-error', errorMsg);
+
         }
     } catch (error) {
         console.error('Error processing request:', error);

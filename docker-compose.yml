@@ -1,0 +1,24 @@
+services:
+  server:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Ofekxman12
+      POSTGRES_DB: talkback
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db_dump.sql:/docker-entrypoint-initdb.d/db_dump.sql
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:

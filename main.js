@@ -228,30 +228,30 @@ ipcMain.on('register-to-login', () => {
     }
     createLoginWindow();
 });
-
 ipcMain.on('login-to-register', () => {
     if (loginWindow) {
         loginWindow.close();
     }
     createRegisterWindow();
 });
-
-
+ipcMain.on('user-not-found', () => {
+    createErrorWindow('User Not Found');
+});
+ipcMain.on('register-error' , (event, error) => {
+    createErrorWindow(error)
+});
 ipcMain.on('login-to-contacts', () => {
     if (loginWindow) {
         loginWindow.close();
     }
     createContactWindow();
 });
-
-
 ipcMain.on('contacts-to-login', () => {
     if (ContactWindow) {
         ContactWindow.close();
     }
     createLoginWindow();
 });
-
 ipcMain.on('log-in', (event, username) => {
     console.log('lol');
     socket.emit('log-user', username);
@@ -329,21 +329,17 @@ ipcMain.on('accept-request', async (event, messageId)=>{
     }
     
 });
-
 ipcMain.on('send-message', (event, messageDetails) => {
     console.log(messageDetails);
     socket.emit('sent-message-to-server', messageDetails);
 
 });
-
 ipcMain.on('send-turn-to-server', (event, data) => {
     socket.emit('send-turn-to-server',data);
 });
-
 ipcMain.on('win-game', (event, data) => {
     createWinWindow(data);
 });
-
 ipcMain.on('rematch-request', (event, data) => {
     socket.emit('rematch-request', data);
 });
@@ -365,7 +361,6 @@ ipcMain.on('quit-game', (event,data) => {
     Connect4Window.close();
     socket.emit('user-quit', {room : data.room, userLeft : data.you})
 });
-
 ipcMain.on('send-tie', (event, data) => {
     createTieWindow(data);
 });
